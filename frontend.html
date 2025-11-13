@@ -1,0 +1,21 @@
+frontend.html
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Previsões do Modelo</title>
+</head>
+<body>
+  <h1>Previsão do Modelo</h1>
+  <button onclick="getPrediction()">Obter Previsão</button>
+  <pre id="result"></pre>
+
+  <script>
+    async function getPrediction() {
+      const res = await fetch('http://localhost:3001/api/predictions');
+      const data = await res.json();
+      document.getElementById('result').textContent = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>

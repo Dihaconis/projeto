@@ -1,0 +1,108 @@
+javascript
+const express = require('express');
+const router = express.Router();
+const predictionService = require('../services/predictionService');
+
+router.get('/predictions', async (req, res) => {
+try {
+const predictions = await predictionService.getPredictions();
+res.json(predictions);
+} catch (error) {
+res.status(500).json({ error: 'Erro ao obter previsões' });
+}
+});
+
+router.get('/update-predictions', async (req, res) => {
+try {
+const updatedPredictions = await predictionService.updatePredictions();
+res.json(updatedPredictions);
+} catch (error) {
+res.status(500).json({ error: 'Erro ao atualizar previsões' });
+}
+});
+
+module.exports = router;
+
+backend/services/predictionService.js
+
+javascript
+const fetch = require('node-fetch');
+const { model } = require('../models/predictionModel');
+
+const getPredictions = async () => {
+// Lógica para obter previsões do modelo de machine learning
+const predictions = await model.predict();
+return predictions;
+};
+
+const updatePredictions = async () => {
+// Lógica para atualizar previsões com novos dados
+const newData = await fetchData();
+const updatedPredictions = await model.train(newData);
+return updatedPredictions;
+};
+
+const fetchData = async () => {
+// Lógica para coletar dados das casas de apostas
+const aviatorData = await fetchAviatorData();
+const minesData = await fetchMinesData();
+return { aviatorData, minesData };
+};
+
+const fetchAviatorData = async () => {
+// Implementar web scraping ou API para coletar dados de Aviator
+const response = await fetch('https://api.betano.com/games/aviator');
+const data = await response.json();
+return data;
+};
+
+const fetchMinesData = async () => {
+// Implementar web scraping ou API para coletar dados de Mines
+const response = await fetch('https://api.betano.com/games/mines');
+const data = await response.json();
+return data;
+};
+
+module.exports = { getPredictions, updatePredictions };
+
+backend/models/predictionModel.js
+
+javascript
+const tf = require('@tensorflow/tfjs-node');
+
+// Exemplo de modelo de machine learning simples
+const model = tf.sequential();
+model.add(tf.layers.dense({ units: 1, inputShape: [10] }));
+model.compile({ loss: 'meanSquaredError', optimizer: 'sgd' });
+
+const train = async (data) => {
+// Lógica de treinamento do modelo
+const xs = tf.tensor2d(data.inputs);
+const ys = tf.tensor2d(data.outputs);
+await model.fit(xs, ys, { epochs: 10 });
+return model.predict(xs).dataSync();
+};
+
+const predict = async () => {
+// Lógica de previsão
+const input = tf.tensor2d([[/* dados de entrada */]]);
+return model.predict(input).dataSync();
+};
+
+module.exports = { model, train, predict };
+
+backend/app.js
+
+javascript
+const express = require('express');
+const bodyParser = require('body-parser');
+const predictionsRouter = require('./routes/predictions');
+
+const app = express();
+app.use(bodyParser.json());
+app.use('/api', predictionsRouter);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+console.log(`Servidor rodando na porta ${PORT}`);
+});

@@ -1,0 +1,18 @@
+{
+  "betano": {
+    "aviator": { "inputs": [], "outputs": [] },
+    "mines": { "inputs": [], "outputs": [] }
+  },
+  "blaze": {
+    "aviator": { "inputs": [], "outputs": [] },
+    "mines": { "inputs": [], "outputs": [] }
+  },
+  "estrela_bet": {
+    "aviator": { "inputs": [], "outputs": [] },
+    "mines": { "inputs": [], "outputs": [] }
+  },
+  "bet365": {
+    "aviator": { "inputs": [], "outputs": [] },
+    "mines": { "inputs": [], "outputs": [] }
+  }
+}

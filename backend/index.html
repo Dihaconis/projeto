@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Previsões</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+        .prediction-display {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background-color: #e7f3ff;
+            border: 1px solid #cce0f5;
+            border-radius: 6px;
+        }
+        .prediction-display p {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #00529b;
+        }
+        .prediction-display span {
+            font-weight: bold;
+            font-size: 2rem;
+            display: block;
+            margin-top: 0.5rem;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #train-model-btn {
+            background-color: #28a745;
+        }
+        #train-model-btn:hover {
+            background-color: #218838;
+        }
+        .status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Painel de Previsões</h1>
+
+        <div class="prediction-display">
+            <p>Previsão Atual:</p>
+            <span id="prediction-value">--</span>
+        </div>
+
+        <button id="fetch-prediction-btn">Buscar Nova Previsão</button>
+        <button id="train-model-btn">Treinar Modelo</button>
+
+        <div id="status" class="status">Clique em um botão para começar.</div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:3001/api';
+
+        const predictionValueEl = document.getElementById('prediction-value');
+        const statusEl = document.getElementById('status');
+        const fetchBtn = document.getElementById('fetch-prediction-btn');
+        const trainBtn = document.getElementById('train-model-btn');
+
+        // Função para buscar a previsão
+        fetchBtn.addEventListener('click', async () => {
+            console.log('Botão "Buscar Nova Previsão" clicado.');
+            statusEl.textContent = 'Buscando previsão...';
+            try {
+                const response = await fetch(`${API_BASE_URL}/predictions`);
+                console.log('Resposta da API recebida:', response);
+                const data = await response.json();
+                console.log('Dados convertidos para JSON:', data);
+                predictionValueEl.textContent = data.prediction.toFixed(4); // Formata para 4 casas decimais
+                statusEl.textContent = 'Previsão carregada com sucesso!';
+            } catch (error) {
+                statusEl.textContent = 'Erro ao buscar previsão.';
+                console.error('Erro:', error);
+            }
+        });
+
+        // Função para treinar o modelo (usando dados de exemplo)
+        trainBtn.addEventListener('click', async () => {
+            console.log('Botão "Treinar Modelo" clicado.');
+            statusEl.textContent = 'Iniciando treinamento...';
+            const trainingData = {
+                inputs: [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0], [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.1]],
+                outputs: [[1], [0]]
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/update-predictions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(trainingData)
+                });
+                console.log('Resposta da API de treinamento recebida:', response);
+                const result = await response.json();
+                console.log('Resultado do treinamento em JSON:', result);
+                statusEl.textContent = `Treinamento concluído! Perda (loss): ${result.loss.toFixed(4)}`;
+            } catch (error) {
+                statusEl.textContent = 'Erro ao treinar o modelo.';
+                console.error('Erro:', error);
+            }
+        });
+    </script>
+
+</body>
+</html>
