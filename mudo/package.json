@@ -1,0 +1,55 @@
+{
+  "name": "mudo",
+  "productName": "MUDO",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gerador local de vídeo narrado para canal sem rosto",
+  "main": "out/main/index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "13.2.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "drizzle-orm": "0.45.4",
+    "lucide-react": "1.73.0",
+    "pino": "10.4.0",
+    "pino-roll": "4.0.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "4.2.1",
+    "@tailwindcss/vite": "4.3.5",
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "drizzle-kit": "0.31.11",
+    "electron": "45.3.3",
+    "electron-builder": "26.18.0",
+    "electron-vite": "6.0.0",
+    "playwright": "1.65.1",
+    "tailwindcss": "4.3.5",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc -p .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "electron-vite build && node scripts/run-e2e.mjs",
+    "db:generate": "drizzle-kit generate",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

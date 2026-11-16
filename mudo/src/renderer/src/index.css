@@ -1,0 +1,43 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: #0b0d10;
+  --color-foreground: #e6e8eb;
+  --color-card: #12151a;
+  --color-card-foreground: #e6e8eb;
+  --color-muted: #1a1e24;
+  --color-muted-foreground: #8b929c;
+  --color-border: #232831;
+  --color-input: #232831;
+  --color-primary: #e6e8eb;
+  --color-primary-foreground: #0b0d10;
+  --color-secondary: #1f242b;
+  --color-secondary-foreground: #e6e8eb;
+  --color-accent: #3b82f6;
+  --color-destructive: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-ring: #3b82f6;
+  --radius-md: 6px;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Cascadia Mono', Consolas, ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+::selection {
+  background: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
