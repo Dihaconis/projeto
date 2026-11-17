@@ -59,7 +59,7 @@ export interface Card {
  * Agrupa palavras em "cartões" de no máximo 2 linhas × ~32 caracteres.
  * Fim de frase sempre fecha o cartão; vírgula é ponto preferido de quebra.
  */
-export function buildCards(words: WordTime[], holdMs = 300): Card[] {
+export function buildCards(words: WordTime[], holdMs = 300, maxLineChars = SUB_MAX_LINE_CHARS): Card[] {
   const cards: Card[] = []
   let lines: number[][] = [[]]
   const lineLen = (l: number[]) => l.reduce((s, i, k) => s + words[i]!.word.length + (k > 0 ? 1 : 0), 0)
@@ -73,14 +73,14 @@ export function buildCards(words: WordTime[], holdMs = 300): Card[] {
   words.forEach((w, i) => {
     let line = lines.at(-1)!
     const add = w.word.length + (line.length > 0 ? 1 : 0)
-    if (line.length > 0 && lineLen(line) + add > SUB_MAX_LINE_CHARS) {
+    if (line.length > 0 && lineLen(line) + add > maxLineChars) {
       if (lines.length >= SUB_MAX_LINES) close()
       else lines.push([])
       line = lines.at(-1)!
     }
     line.push(i)
     if (/[.!?…]["”»)]?$/u.test(w.word)) close()
-    else if (/[,;:—–]$/u.test(w.word) && lines.length === SUB_MAX_LINES && lineLen(line) > SUB_MAX_LINE_CHARS * 0.6) close()
+    else if (/[,;:—–]$/u.test(w.word) && lines.length === SUB_MAX_LINES && lineLen(line) > maxLineChars * 0.6) close()
   })
   close()
   cards.forEach((c, k) => {
@@ -97,18 +97,24 @@ export function buildCards(words: WordTime[], holdMs = 300): Card[] {
  * Gera o .ASS de um trecho [fromMs, toMs): um evento por palavra, com o cartão
  * inteiro na tela e a palavra atual destacada. Tempos relativos a `fromMs`.
  */
-export function buildAss(words: WordTime[], fromMs: number, toMs: number, style: SubtitleStyle = DEFAULT_SUB_STYLE): string {
+export function buildAss(
+  words: WordTime[],
+  fromMs: number,
+  toMs: number,
+  style: SubtitleStyle = DEFAULT_SUB_STYLE,
+  canvas: { width: number; height: number; maxLineChars: number } = { width: 1920, height: 1080, maxLineChars: SUB_MAX_LINE_CHARS },
+): string {
   const header = [
     '[Script Info]',
     'ScriptType: v4.00+',
-    'PlayResX: 1920',
-    'PlayResY: 1080',
+    `PlayResX: ${canvas.width}`,
+    `PlayResY: ${canvas.height}`,
     'WrapStyle: 2',
     'ScaledBorderAndShadow: yes',
     '',
     '[V4+ Styles]',
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
-    `Style: Default,${style.font},${style.fontSize},${assColor(style.color)},${assColor(style.highlight)},&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,${style.outline},2,2,160,160,${style.marginV},1`,
+    `Style: Default,${style.font},${style.fontSize},${assColor(style.color)},${assColor(style.highlight)},&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,${style.outline},2,2,${Math.round(canvas.width / 12)},${Math.round(canvas.width / 12)},${style.marginV},1`,
     '',
     '[Events]',
     'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
@@ -116,7 +122,7 @@ export function buildAss(words: WordTime[], fromMs: number, toMs: number, style:
   const hl = assColor(style.highlight)
   const base = assColor(style.color)
   const events: string[] = []
-  for (const card of buildCards(words)) {
+  for (const card of buildCards(words, 300, canvas.maxLineChars)) {
     for (let k = card.first; k <= card.last; k++) {
       const start = k === card.first ? card.startMs : words[k]!.startMs
       const end = k === card.last ? card.endMs : words[k + 1]!.startMs

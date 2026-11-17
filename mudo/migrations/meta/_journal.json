@@ -22,6 +22,13 @@
       "when": 1794880127512,
       "tag": "0002_images_library",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1794884050634,
+      "tag": "0003_cuts",
+      "breakpoints": true
     }
   ]
 }

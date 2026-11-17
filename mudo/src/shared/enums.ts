@@ -14,12 +14,22 @@ export const TERMINAL_STATES: readonly JobState[] = ['done', 'failed', 'cancelle
 export const STAGES = ['script', 'review', 'images', 'tts', 'assemble'] as const
 export type Stage = (typeof STAGES)[number]
 
-export const STAGE_LABELS: Record<Stage, string> = {
+/** Etapas dos Cortes (Beta, seção 11.3). */
+export const CUT_STAGES = ['download', 'transcribe', 'analyze', 'export'] as const
+export type CutStage = (typeof CUT_STAGES)[number]
+export const ALL_STAGES = [...STAGES, ...CUT_STAGES] as const
+export type AnyStage = Stage | CutStage
+
+export const STAGE_LABELS: Record<AnyStage, string> = {
   script: 'Roteiro',
   review: 'Revisão',
   images: 'Imagens',
   tts: 'Narração',
   assemble: 'Montagem',
+  download: 'Download',
+  transcribe: 'Transcrição',
+  analyze: 'Análise',
+  export: 'Exportação',
 }
 
 export const JOB_STATE_LABELS: Record<JobState, string> = {
@@ -31,8 +41,8 @@ export const JOB_STATE_LABELS: Record<JobState, string> = {
   cancelled: 'Cancelado',
 }
 
-/** Tipos de job. */
-export const JOB_KINDS = ['video'] as const
+/** Tipos de job: vídeo, análise de corte e exportação de corte. */
+export const JOB_KINDS = ['video', 'cut', 'cut_export'] as const
 export type JobKind = (typeof JOB_KINDS)[number]
 
 export const LANGUAGES = ['pt-BR', 'es', 'en'] as const

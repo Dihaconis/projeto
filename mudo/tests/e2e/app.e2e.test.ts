@@ -8,9 +8,9 @@ import path from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 import { afterEach, describe, expect, it } from 'vitest'
 import { helperSecrets } from '../../src/cli/helper-secrets'
-import { createChannel, dataPaths, openDatabase } from '../../src/core'
+import { createChannel, dataPaths, openDatabase, resolveMediaBinaries } from '../../src/core'
 import { tempRoot } from '../helpers/env'
-import { seedVideo } from './seed'
+import { seedCut, seedVideo } from './seed'
 
 const APP_DIR = path.resolve(__dirname, '../..')
 const ELECTRON = require('electron') as unknown as string
@@ -226,5 +226,39 @@ describe('app Electron', () => {
     // Biblioteca mostra o medidor de cota
     await page.getByTestId('nav-library').click()
     await expect(page.getByTestId('quota-meter').textContent()).resolves.toContain('Ilimitado')
+  })
+
+  it('Cortes (Beta): exige autorização; o app transcreve (whisper) e, sem chave, pede ação; exporta 9:16 de trechos prontos', async () => {
+    const root = tempRoot('mudo e2e cortes ')
+    roots.push(root)
+    const sample = path.join(root, 'minha palestra.mp4')
+    const jfk = path.resolve(__dirname, '../fixtures/audio/jfk.wav')
+    spawnSync(resolveMediaBinaries().ffmpeg, [
+      '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc2=s=1280x720:r=30:d=36', '-i', jfk, '-i', jfk, '-i', jfk,
+      '-filter_complex', '[1:a]apad=pad_dur=1[a1];[2:a]apad=pad_dur=1[a2];[3:a][a1][a2]concat=n=3:v=0:a=1[a]',
+      '-map', '0:v', '-map', '[a]', '-shortest', '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'aac', sample,
+    ])
+    const { highlightId } = await seedCut(root, sample)
+
+    const { page } = await launch(root)
+    await page.getByTestId('nav-cuts').click()
+    // sem marcar a autorização, não analisa
+    await page.getByTestId('cut-source').fill(sample)
+    await expect(page.getByTestId('cut-create').isDisabled()).resolves.toBe(true)
+    await page.getByTestId('cut-authorized').check()
+    await page.getByTestId('cut-create').click()
+    const pending = page.locator('[data-testid="cut-item"][data-state="needs_input"]')
+    await pending.waitFor({ timeout: 120_000 })
+    await expect(page.getByTestId('cut-detail').textContent()).resolves.toContain('Adicione uma chave de API')
+    await expect(page.getByTestId('transcript').textContent()).resolves.toMatch(/country/i)
+
+    // trechos já analisados (fixture): exportar 9:16 roda no runner do app
+    await page.locator('[data-testid="cut-item"][data-state="done"]').click()
+    await page.getByTestId('highlight').first().getByTestId('export-cut').click()
+    await page.getByRole('button', { name: 'Ver arquivo 9:16' }).waitFor({ timeout: 120_000 })
+    const h = openDatabase(dataPaths(root).db)
+    const row = h.sqlite.prepare('SELECT exported_path FROM cut_highlights WHERE id = ?').get(highlightId) as { exported_path: string }
+    h.close()
+    expect(fs.existsSync(row.exported_path)).toBe(true)
   })
 })

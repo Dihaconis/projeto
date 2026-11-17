@@ -15,6 +15,8 @@ export interface MediaBinaries {
   whisperModel: string | null
   /** Fontes embarcadas (licença OFL) para legenda, thumbnail e cartela. */
   fontsDir: string
+  /** yt-dlp (Cortes por link). */
+  ytdlp: string | null
 }
 
 /** Raiz do projeto em desenvolvimento (pasta com o package.json do MUDO). */
@@ -77,6 +79,7 @@ export function resolveMediaBinaries(
     whisper: fs.existsSync(whisper) ? whisper : null,
     whisperModel: fs.existsSync(whisperModel) ? whisperModel : null,
     fontsDir: path.join(assetsDir, 'fonts'),
+    ytdlp: fs.existsSync(path.join(binDir, `yt-dlp${exe}`)) ? path.join(binDir, `yt-dlp${exe}`) : null,
   }
 }
 

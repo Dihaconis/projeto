@@ -1,10 +1,11 @@
-import { FileText, Film, LibraryBig, Settings, ShieldCheck, Tv } from 'lucide-react'
+import { FileText, Film, LibraryBig, Scissors, Settings, ShieldCheck, Tv } from 'lucide-react'
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import type { RunnerStatus } from '../../shared/ipc'
 import { Button } from '@/components/ui/button'
 import { mudo } from '@/lib/bridge'
 import { cn } from '@/lib/utils'
 import { ChannelsScreen } from '@/screens/ChannelsScreen'
+import { CutsScreen } from '@/screens/CutsScreen'
 import { LibraryScreen } from '@/screens/LibraryScreen'
 import { LicensesScreen } from '@/screens/LicensesScreen'
 import { Onboarding } from '@/screens/Onboarding'
@@ -33,10 +34,11 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
   }
 }
 
-type Screen = 'videos' | 'library' | 'channels' | 'licenses' | 'settings'
+type Screen = 'videos' | 'library' | 'cuts' | 'channels' | 'licenses' | 'settings'
 const NAV: Array<{ id: Screen; label: string; icon: typeof Film }> = [
   { id: 'videos', label: 'Meus Vídeos', icon: Film },
   { id: 'library', label: 'Biblioteca', icon: LibraryBig },
+  { id: 'cuts', label: 'Cortes (Beta)', icon: Scissors },
   { id: 'channels', label: 'Canais', icon: Tv },
   { id: 'licenses', label: 'Licenças', icon: ShieldCheck },
   { id: 'settings', label: 'Configurações', icon: Settings },
@@ -72,7 +74,7 @@ export function App() {
               key={id}
               data-testid={`nav-${id}`}
               aria-current={screen === id ? 'page' : undefined}
-              onClick={() => setScreen(id)}
+              onClick={() => (setOnboarding(false), setScreen(id))}
               className={cn('mb-0.5 flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px]', screen === id ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60')}
             >
               <Icon className="size-4" /> {label}
@@ -101,6 +103,8 @@ export function App() {
               <VideosScreen onOpenLibrary={() => setScreen('library')} />
             ) : screen === 'library' ? (
               <LibraryScreen />
+            ) : screen === 'cuts' ? (
+              <CutsScreen />
             ) : screen === 'channels' ? (
               <ChannelsScreen />
             ) : screen === 'licenses' ? (

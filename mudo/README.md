@@ -2,9 +2,9 @@
 
 Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React + TypeScript + SQLite.
 
-> **Estado: Fase 6.** App completo para gerar vídeos: Meus Vídeos, Biblioteca, Canais, Licenças e
-> Configurações, com assistente de primeiro uso e cota por plano. A CLI usa o mesmo core. Cortes
-> (Beta) chegam na Fase 7; o instalador, na Fase 8.
+> **Estado: Fase 7.** App completo: Meus Vídeos, Biblioteca, Cortes (Beta), Canais, Licenças e
+> Configurações, com assistente de primeiro uso e cota por plano. A CLI usa o mesmo core. O
+> instalador chega na Fase 8.
 
 ## Requisitos de desenvolvimento
 
@@ -138,6 +138,22 @@ Faixa de duração: alvos de 6–9 min usam a faixa fechada do briefing. A CLI a
 - **Embeddings:** CLIP local (`Xenova/clip-vit-base-patch32`, q8), offline, em revisão fixa. Os
   arquivos e seus SHA-256 estão em `scripts/models.lock.json` e o app nunca baixa nada em execução.
   Alternativa: OpenAI (só texto), com `config set embeddings.provider openai`.
+
+### Cortes (Beta, Fase 7)
+
+- **Entrada:** link (baixado com **yt-dlp** 2026.10.26, binário oficial com SHA-256 conferido) ou
+  arquivo local.
+- **Autorização:** o checkbox "este vídeo é meu ou tenho autorização" é obrigatório; sem ele, nada é
+  criado (UI e core). O momento da confirmação fica gravado.
+- **Análise** (job `cut`, no runner):
+  - Transcrição com whisper.cpp, idioma detectado.
+  - O LLM aponta de 1 a 6 trechos de 15–90 s com nota 0–100 e justificativa, encaixados em limites
+    de frase e sem sobreposição.
+  - Recusa e falta de chave seguem as regras de sempre.
+- **Exportação 9:16** (job `cut_export`):
+  - 1080×1920, recorte central, legenda queimada palavra a palavra, loudnorm −14 LUFS.
+  - Metadado de IA; arquivo em `<saída>/Cortes`.
+  - Consome a cota de cortes só quando o arquivo fica pronto; a cota é checada antes de enfileirar.
 
 ### Canais, Licenças, Configurações e cota (Fase 6)
 

@@ -65,5 +65,25 @@ if (update || !fs.existsSync(whisperBin) || !fs.existsSync(stamp) || fs.readFile
 execFileSync(whisperBin, ['--help'], { stdio: 'ignore' })
 console.log(`whisper-cli ok (${w.tag})`)
 
+// ---- yt-dlp (Cortes): binário oficial da release fixa, SHA-256 conferido ----
+const y = lock.ytdlp
+const asset = y.assets[platformKey]
+if (!asset) {
+  console.warn(`yt-dlp: sem binário registrado para ${platformKey} (Cortes por link indisponível nesta plataforma)`)
+} else {
+  const dest = path.join(binDir, `yt-dlp${exe}`)
+  if (!fs.existsSync(dest) || sha256(dest) !== asset.sha256) {
+    const url = `https://github.com/yt-dlp/yt-dlp/releases/download/${y.version}/${asset.file}`
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`yt-dlp: HTTP ${res.status} em ${url}`)
+    const buf = Buffer.from(await res.arrayBuffer())
+    const got = createHash('sha256').update(buf).digest('hex')
+    if (got !== asset.sha256) throw new Error(`yt-dlp: hash não confere (${got} ≠ ${asset.sha256})`)
+    fs.writeFileSync(dest, buf)
+    fs.chmodSync(dest, 0o755)
+  }
+  console.log(`yt-dlp ok (${y.version})`)
+}
+
 if (update) fs.writeFileSync(lockFile, `${JSON.stringify(lock, null, 2)}\n`)
 console.log(`binários prontos em ${binDir}`)

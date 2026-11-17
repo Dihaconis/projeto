@@ -28,6 +28,7 @@ import { DEFAULTS } from '../shared/enums'
 import type { IpcOutput, RunnerStatus } from '../shared/ipc'
 import { registerIpc, UserFacingError } from './ipc'
 import { RunnerHost } from './runner-host'
+import { cutsHandlers } from './cuts-handlers'
 import { phase6Handlers } from './settings-handlers'
 import { SafeStorageSecretStore } from './secret-store'
 import { runSecretsHelper } from './secrets-helper'
@@ -132,6 +133,7 @@ async function main(): Promise<void> {
 
   registerIpc(
     {
+      ...cutsHandlers({ handle, paths, log, runner, window: () => win, broadcast }),
       ...phase6Handlers({
         handle,
         paths,

@@ -60,7 +60,7 @@ export function listVideoViews(h: DbHandle, filter: { onlyDone?: boolean } = {})
       title: v.title,
       language: z.enum(LANGUAGES).catch('pt-BR').parse(v.language),
       state,
-      stage: j?.stage ?? null,
+      stage: z.enum(STAGES).nullable().catch(null).parse(j?.stage ?? null),
       progress: j?.progress ?? v.progress,
       attempt: j?.attempt ?? 0,
       error: err.success ? { code: err.data.code, message: err.data.message } : null,

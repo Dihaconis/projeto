@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { blob, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
-import { IMAGE_LICENSES, JOB_KINDS, JOB_STATES, STAGES } from '../../shared/enums'
+import { ALL_STAGES, IMAGE_LICENSES, JOB_KINDS, JOB_STATES } from '../../shared/enums'
 
 const now = sql`(CAST(unixepoch('subsec') * 1000 AS INTEGER))`
 
@@ -48,7 +48,7 @@ export const jobs = sqliteTable(
     /** Vídeo gerado por este job. */
     videoId: text('video_id').references(() => videos.id),
     state: text('state', { enum: JOB_STATES }).notNull(),
-    stage: text('stage', { enum: STAGES }),
+    stage: text('stage', { enum: ALL_STAGES }),
     progress: real('progress').notNull().default(0),
     attempt: integer('attempt').notNull().default(0),
     maxAttempts: integer('max_attempts').notNull(),
@@ -200,3 +200,37 @@ export const providerLog = sqliteTable('provider_log', {
   latencyMs: integer('latency_ms'),
   createdAt: integer('created_at').notNull().default(now),
 })
+
+/** Cortes (Beta): vídeo do próprio usuário (ou autorizado) analisado em trechos. */
+export const cuts = sqliteTable('cuts', {
+  id: text('id').primaryKey(),
+  sourceType: text('source_type', { enum: ['file', 'url'] }).notNull(),
+  source: text('source').notNull(),
+  /** Momento em que o usuário marcou "este vídeo é meu ou tenho autorização". */
+  authorizedAt: integer('authorized_at').notNull(),
+  title: text('title'),
+  language: text('language'),
+  mediaPath: text('media_path'),
+  transcriptPath: text('transcript_path'),
+  durationS: real('duration_s'),
+  costCents: real('cost_cents').notNull().default(0),
+  createdAt: integer('created_at').notNull(),
+})
+
+export const cutHighlights = sqliteTable(
+  'cut_highlights',
+  {
+    id: text('id').primaryKey(),
+    cutId: text('cut_id')
+      .notNull()
+      .references(() => cuts.id, { onDelete: 'cascade' }),
+    startMs: integer('start_ms').notNull(),
+    endMs: integer('end_ms').notNull(),
+    score: integer('score').notNull(),
+    title: text('title').notNull(),
+    reason: text('reason').notNull(),
+    exportedPath: text('exported_path'),
+    exportedAt: integer('exported_at'),
+  },
+  (t) => [index('cut_highlights_cut_idx').on(t.cutId)],
+)

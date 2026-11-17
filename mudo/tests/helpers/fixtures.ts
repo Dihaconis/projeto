@@ -124,10 +124,11 @@ export const noProviders: ProviderSource = {
 }
 
 export interface FixtureLog {
-  calls: Array<{ provider: string; kind: 'script' | 'review' | 'scenes' | 'tts'; at: number }>
+  calls: Array<{ provider: string; kind: 'script' | 'review' | 'scenes' | 'tts' | 'cuts'; at: number }>
 }
 
-function kindOf(i: LlmInput): 'script' | 'review' | 'scenes' {
+function kindOf(i: LlmInput): 'script' | 'review' | 'scenes' | 'cuts' {
+  if (i.system.includes('short-form clips')) return 'cuts'
   if (i.system.includes('stock photos')) return 'scenes'
   if (i.prompt.includes('Rubric')) return 'review'
   return 'script'
@@ -144,7 +145,20 @@ export function fixtureLlm(id = 'fixture-llm', log?: FixtureLog, opts: { script?
       const kind = kindOf(input)
       log?.calls.push({ provider: id, kind, at: Date.now() })
       let text: string
-      if (kind === 'script') text = read(opts.script ?? 'llm/script-ceu-azul-pt-60s.json')
+      if (kind === 'cuts') {
+        // escolhe frases seguidas até dar ~20 s, como um editor faria, a partir das linhas "[a–b] texto"
+        const lines = [...input.prompt.matchAll(/^\[([\d.]+)–([\d.]+)\] (.+)$/gm)].map((m) => ({ a: Number(m[1]), b: Number(m[2]), t: m[3]! }))
+        const hls: Array<{ start_s: number; end_s: number; score: number; title: string; reason: string }> = []
+        let i = 0
+        while (i < lines.length && hls.length < 2) {
+          const start = lines[i]!.a
+          let j = i
+          while (j < lines.length - 1 && lines[j]!.b - start < 18) j++
+          if (lines[j]!.b - start >= 15) hls.push({ start_s: start, end_s: lines[j]!.b, score: 90 - hls.length * 15, title: `Trecho ${hls.length + 1}`, reason: 'Abre com uma frase forte e fecha a ideia.' })
+          i = j + 1
+        }
+        text = JSON.stringify({ highlights: hls.length ? hls : [{ start_s: 0, end_s: 5, score: 10, title: 'Curto', reason: 'curto demais' }] })
+      } else if (kind === 'script') text = read(opts.script ?? 'llm/script-ceu-azul-pt-60s.json')
       else if (kind === 'review') text = read(opts.review ?? 'llm/review-approved.json')
       else {
         const scenes = [...input.prompt.matchAll(/^(\d+)\. (.+)$/gm)].map((m) => Number(m[1]))

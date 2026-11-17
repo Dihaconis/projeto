@@ -1,12 +1,12 @@
 import { and, desc, eq, inArray, isNotNull, lt, or, sql } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
-import { DEFAULTS, type JobKind, type JobState, type Stage } from '../../shared/enums'
+import { DEFAULTS, type AnyStage, type JobKind, type JobState } from '../../shared/enums'
 import type { DbHandle } from '../db'
 import { jobProcs, jobs } from '../db/schema'
 import type { JobErrorInfo } from './errors'
 
 export type JobRow = typeof jobs.$inferSelect
-export type StageTimings = Partial<Record<Stage, number>>
+export type StageTimings = Partial<Record<AnyStage, number>>
 
 export type Clock = () => number
 
@@ -25,7 +25,7 @@ export type FinishOutcome =
   | { state: 'queued'; error?: JobErrorInfo; countAttempt: boolean }
 
 export interface ProgressPatch {
-  stage?: Stage | null
+  stage?: AnyStage | null
   progress?: number
   checkpoint?: unknown
   stageTimings?: StageTimings

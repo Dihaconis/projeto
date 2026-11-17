@@ -105,6 +105,41 @@ export const settingsSchema = z.object({
 })
 export type SettingsView = z.infer<typeof settingsSchema>
 
+export const cutViewSchema = z.object({
+  id: z.string(),
+  title: z.string().nullable(),
+  source: z.string(),
+  sourceType: z.enum(['file', 'url']),
+  durationS: z.number().nullable(),
+  state: z.enum(JOB_STATES),
+  stage: z.string().nullable(),
+  progress: z.number(),
+  error: z.object({ code: z.string(), message: z.string() }).nullable(),
+  highlights: z.number(),
+  exporting: z.number(),
+  createdAt: z.number(),
+})
+export type CutViewDto = z.infer<typeof cutViewSchema>
+
+export const cutDetailSchema = z.object({
+  cut: cutViewSchema,
+  transcript: z.array(z.object({ word: z.string(), startMs: z.number(), endMs: z.number() })),
+  highlights: z.array(
+    z.object({
+      id: z.string(),
+      startMs: z.number(),
+      endMs: z.number(),
+      score: z.number(),
+      title: z.string(),
+      reason: z.string(),
+      exportedPath: z.string().nullable(),
+      exportState: z.enum(JOB_STATES).nullable(),
+      exportError: z.string().nullable(),
+    }),
+  ),
+})
+export type CutDetailDto = z.infer<typeof cutDetailSchema>
+
 const scriptActSchema = z.object({ n: z.number().int(), heading: z.string().trim().min(1).max(120), text: z.string().trim().min(1).max(5000) })
 export const scriptForEditSchema = z.object({
   acts: z.array(scriptActSchema),
@@ -174,6 +209,14 @@ export const ipcContract = {
   'keys:test': { input: z.object({ id: secretIdSchema }), output: z.object({ ok: z.boolean(), message: z.string(), latencyMs: z.number() }) },
   'quota:status': { input: z.undefined(), output: quotaSchema },
   'app:legal': { input: z.object({ doc: z.enum(['terms', 'privacy', 'third-party']) }), output: z.object({ title: z.string(), text: z.string() }) },
+  'cuts:list': { input: z.undefined(), output: z.array(cutViewSchema) },
+  'cuts:chooseFile': { input: z.undefined(), output: z.object({ path: z.string().nullable() }) },
+  'cuts:create': { input: z.object({ source: z.string().trim().min(1).max(2000), authorized: z.boolean() }), output: z.object({ cutId: z.string() }) },
+  'cuts:detail': { input: idInput, output: cutDetailSchema },
+  'cuts:export': { input: z.object({ highlightId: z.uuid() }), output: okOutput },
+  'cuts:showFile': { input: z.object({ highlightId: z.uuid() }), output: okOutput },
+  'cuts:retry': { input: idInput, output: okOutput },
+  'cuts:delete': { input: idInput, output: okOutput },
   'runner:status': { input: z.undefined(), output: runnerStatusSchema },
   'app:info': {
     input: z.undefined(),

@@ -1,12 +1,12 @@
 import fs from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import type { Logger } from 'pino'
-import { DEFAULTS, STAGES, type Stage } from '../../shared/enums'
+import { DEFAULTS, type AnyStage } from '../../shared/enums'
 import type { DbHandle } from '../db'
 import type { MediaBinaries } from '../media/ffmpeg'
 import type { ProviderSource } from '../providers/registry'
 import { jobWorkDir, type DataPaths } from '../paths'
-import { STAGE_WEIGHTS, type JobContext, type JobHandlers, type SharedResource } from '../pipeline/context'
+import { STAGE_PLAN, type JobContext, type JobHandlers, type SharedResource } from '../pipeline/context'
 import { commandName, isSameProcessAlive, killPidTree, runProcess } from '../proc/spawn'
 import { JobError, NeedsInputError, toErrorInfo } from '../queue/errors'
 import { JobQueue, type JobRow, type StageTimings } from '../queue/queue'
@@ -35,8 +35,9 @@ const SHUTDOWN = 'runner-shutdown'
 const LEASE_LOST = 'lease-lost'
 
 /** Pasta de trabalho do job: por vídeo, ou pelo id do job quando não há vídeo. */
-export function workKey(job: Pick<JobRow, 'id' | 'videoId'>): string {
-  return job.videoId ?? job.id
+export function workKey(job: Pick<JobRow, 'id' | 'videoId'> & { payload?: unknown }): string {
+  const cutId = (job.payload as { cutId?: unknown } | undefined)?.cutId
+  return job.videoId ?? (typeof cutId === 'string' && /^[0-9a-f-]{36}$/.test(cutId) ? cutId : job.id)
 }
 
 /** Remove os temporários do job (usado no cancelamento). Checkpoints ficam. */
@@ -190,7 +191,7 @@ export class Runner {
     let checkpoint: unknown = job.checkpoint
     let costCents = job.costCents
     const timings: StageTimings = { ...((job.stageTimings ?? {}) as StageTimings) }
-    let stage: Stage | null = null
+    let stage: AnyStage | null = null
     let stageStart = 0
     let stageFraction = 0
     let lastEmit = 0
@@ -202,11 +203,11 @@ export class Runner {
     const overall = () => {
       if (!stage) return 0
       let p = 0
-      for (const s of STAGES) {
-        if (s === stage) break
-        p += STAGE_WEIGHTS[s]
+      for (const [s, w] of STAGE_PLAN[job.kind]) {
+        if (s === stage) return p + w * stageFraction
+        p += w
       }
-      return p + STAGE_WEIGHTS[stage] * stageFraction
+      return p
     }
     const write = (patch: Parameters<JobQueue['update']>[2]) => {
       if (!this.queue.update(job.id, this.id, patch)) controller.abort(LEASE_LOST)
