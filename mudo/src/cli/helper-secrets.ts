@@ -54,9 +54,16 @@ export function helperSecrets(launch: HelperLaunch): SecretsAdmin {
       })
       child.once('close', () => {
         clearTimeout(timer)
-        const line = out.split('\n').find((l) => l.trim().startsWith('{'))
+        const line = out.split(/\r?\n/).find((l) => l.trim().startsWith('{'))
         if (!line) return reject(new Error('resposta vazia do MUDO ao pedido de chave'))
-        const parsed = secretsHelperResponseSchema.safeParse(JSON.parse(line))
+        let json: unknown
+        try {
+          json = JSON.parse(line)
+        } catch {
+          // não inclui o conteúdo: pode conter a chave
+          return reject(new Error(`resposta incompleta do MUDO ao pedido de chave (${line.length} bytes)`))
+        }
+        const parsed = secretsHelperResponseSchema.safeParse(json)
         if (!parsed.success) return reject(new Error('resposta inválida do MUDO ao pedido de chave'))
         resolve(parsed.data)
       })

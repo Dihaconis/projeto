@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import fs from 'node:fs'
 import { secretsHelperRequestSchema, type SecretsHelperResponse } from '../core/secrets'
 import type { SafeStorageSecretStore } from './secret-store'
 
@@ -10,7 +11,18 @@ import type { SafeStorageSecretStore } from './secret-store'
  */
 export async function runSecretsHelper(store: SafeStorageSecretStore): Promise<void> {
   const respond = (r: SecretsHelperResponse) => {
-    process.stdout.write(`${JSON.stringify(r)}\n`, () => app.exit(0))
+    // escrita síncrona e completa no fd 1: no Windows a escrita assíncrona no pipe
+    // podia ser cortada pelo app.exit e a CLI recebia a linha pela metade
+    const buf = Buffer.from(`${JSON.stringify(r)}\n`, 'utf8')
+    let off = 0
+    while (off < buf.length) {
+      try {
+        off += fs.writeSync(1, buf, off, buf.length - off)
+      } catch (e) {
+        if ((e as NodeJS.ErrnoException).code !== 'EAGAIN') break
+      }
+    }
+    app.exit(0)
   }
   const line = await new Promise<string>((resolve) => {
     let buf = ''
