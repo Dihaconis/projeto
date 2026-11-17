@@ -2,9 +2,9 @@
 
 Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React + TypeScript + SQLite.
 
-> **Estado: Fase 7.** App completo: Meus Vídeos, Biblioteca, Cortes (Beta), Canais, Licenças e
-> Configurações, com assistente de primeiro uso e cota por plano. A CLI usa o mesmo core. O
-> instalador chega na Fase 8.
+> **Estado: Fase 8.** App completo (Meus Vídeos, Biblioteca, Cortes Beta, Canais, Licenças,
+> Configurações), CLI, instalador NSIS x64 por usuário + portable, e CI no Windows que instala sem
+> admin num caminho com espaço e acento e roda sem Node.
 
 ## Requisitos de desenvolvimento
 
@@ -19,6 +19,67 @@ npm run typecheck
 npm test             # unitários + integração (fila, provedores, pipeline, CLI gerando MP4 real com fixtures, kill -9)
 npm run test:e2e     # build + e2e no app Electron real (Linux sem tela: usa xvfb-run)
 ```
+
+## Instalador (Fase 8)
+
+```bash
+npm run dist            # modelos + binários (hash conferido) + licenças + build + NSIS e portable (no Windows)
+npm run test:packaged   # gera o pacote da plataforma atual (pasta) e roda o smoke sobre ele
+```
+
+### Configuração (`electron-builder.yml`)
+
+- **NSIS x64:**
+  - Instalação por usuário (`perMachine: false`, sem elevação) em `%LOCALAPPDATA%\Programs`, nunca
+    em Program Files.
+  - Diretório escolhível; desinstalar não apaga `%APPDATA%\MUDO`.
+- **Portable x64.**
+- **Fora do asar:** os módulos nativos (better-sqlite3, sharp, onnxruntime-node). Todos são N-API
+  pré-compilados, por isso `npmRebuild: false`.
+- **`afterPack`:** remove os binários de outras plataformas (o onnxruntime traz todas).
+- **`extraResources`:**
+  - `bin/`: ffmpeg/ffprobe com SHA-256 no lock, whisper-cli de commit fixo, yt-dlp com SHA-256 oficial.
+  - `models/`: CLIP e whisper base, com SHA-256.
+  - Também: `migrations/`, `assets/` (fontes OFL, textos legais) e `cli/` (`mudo.cmd`).
+- **Fuses:** `runAsNode` ligado, porque a CLI depende dele. `onlyLoadAppFromAsar`, cookies cifrados,
+  `NODE_OPTIONS` e `--inspect` desligados.
+- **Erro na inicialização:** caixa de erro com o caminho de `startup-error.log`, e a pasta de logs
+  abre.
+
+### CLI no Windows
+
+```
+"%LOCALAPPDATA%\Programs\MUDO\resources\cli\mudo.cmd" channel list
+```
+
+O `mudo.cmd` roda o core com o próprio `MUDO.exe` em modo Node; não precisa de Node instalado.
+
+### CI no Windows (`.github/workflows/mudo-windows.yml`)
+
+Roda em `windows-latest`, nos PRs que mexem em `mudo/` e sob demanda:
+
+1. Typecheck, testes, e2e no Electron e smoke do pacote.
+2. Gera o NSIS e o portable.
+3. Instala em silêncio, **sem admin**, em `…\Programs\MUDO Teste ação`.
+4. Tira do PATH tudo que tem `node.exe` e roda a CLI instalada.
+5. Abre o app instalado e confere que o runner dele processa um vídeo até pedir a chave.
+6. Desinstala e publica os instaladores como artefato.
+
+## Critérios de aceite (seção 17) — onde cada um é verificado
+
+| # | Critério | Verificação |
+|---|---|---|
+| 1 | Tema → vídeo 6–9 min em até 10 min, tempo por etapa registrado | `stage_timings` e `gen_time_s` gravados por vídeo (`tests/integration/cli.e2e.test.ts`). **O tempo com provedores reais ainda precisa ser medido com as suas chaves.** |
+| 2 | 1080p/30, legenda < 150 ms, música sob a voz, −14 LUFS ±1, thumbnail e cartela | `tests/integration/acceptance.test.ts` e `tests/unit/assembly.test.ts` |
+| 3 | Matar na montagem e reabrir retoma do último segmento | `tests/integration/crash-assemble.test.ts` |
+| 4 | Imagem que exige crédito sem crédito → `LICENSE_MISSING` | `tests/integration/pipeline.test.ts` |
+| 5 | Provedor fora do ar → fallback | `tests/integration/cli.e2e.test.ts`, `tests/unit/providers.test.ts` |
+| 6 | Recusa → `needs_input`, sem troca automática | `tests/integration/cli.e2e.test.ts`, `tests/unit/providers.test.ts` |
+| 7 | Cota estourada recusa antes de enfileirar | `tests/integration/phase6.test.ts` |
+| 8 | Instalador no Windows limpo, sem admin, sem Node, caminho com espaço/acento | workflow `mudo-windows.yml`; o mesmo smoke em Linux em `tests/packaged/` |
+| 9 | Nenhuma marca d'água | não existe nenhum código que desenhe marca; só metadado `comment` e a cartela de créditos |
+| 10 | Nenhuma chave em log, banco em texto claro ou renderer | `tests/e2e/app.e2e.test.ts` (config.json, logs, HTML da página) e redação no pino |
+| 11 | Testes unitários do core + e2e da CLI com fixtures | `npm test` |
 
 ## CLI
 

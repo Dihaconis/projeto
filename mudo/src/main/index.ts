@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, net, protocol, shell, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, net, protocol, shell, type IpcMainInvokeEvent } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -286,5 +286,11 @@ if (helperMode) {
   } catch {
     // sem onde registrar
   }
+  // erro de inicialização: mensagem acionável e caminho dos logs (seção 15)
+  dialog.showErrorBox(
+    'O MUDO não conseguiu iniciar',
+    `${err instanceof Error ? err.message : String(err)}\n\nOs detalhes foram gravados em:\n${path.join(paths.logs, 'startup-error.log')}`,
+  )
+  void shell.openPath(paths.logs)
   app.exit(1)
 })

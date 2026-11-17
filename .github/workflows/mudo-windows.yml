@@ -1,0 +1,100 @@
+# MUDO — build, testes e instalador no Windows (seção 15 e critério de aceite 8).
+# Roda nos PRs que mexem em mudo/ e sob demanda.
+name: MUDO Windows
+
+on:
+  pull_request:
+    paths: ['mudo/**', '.github/workflows/mudo-windows.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: mudo-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: mudo
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mudo/package-lock.json
+
+      - name: Cache de modelos (CLIP + whisper base, com hash no lock)
+        uses: actions/cache@v4
+        with:
+          path: mudo/resources/models
+          key: mudo-models-${{ hashFiles('mudo/scripts/models.lock.json') }}
+
+      - name: Dependências (+ modelos com SHA-256 conferido)
+        run: npm ci
+
+      - name: Binários (ffmpeg/ffprobe conferidos, whisper-cli compilado com MSVC, yt-dlp)
+        run: npm run binaries
+
+      - name: Tipos
+        run: npm run typecheck
+
+      - name: Testes unitários e de integração
+        run: npm test
+
+      - name: Testes e2e no app Electron
+        run: npm run test:e2e
+
+      - name: Smoke do pacote (pasta win-unpacked)
+        run: npm run test:packaged
+
+      - name: Instalador NSIS + portable
+        run: |
+          npm run legal
+          npx electron-builder --win --x64 --publish never
+
+      - name: Instalar sem admin em caminho com espaço e acento; CLI sem Node no PATH
+        run: |
+          $setup = Get-ChildItem release\MUDO-Setup-*-x64.exe | Select-Object -First 1
+          $dest = Join-Path $env:LOCALAPPDATA 'Programs\MUDO Teste ação'
+          # /D precisa ser o último argumento e sem aspas (regra do NSIS)
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S', "/D=$dest" -Wait
+          if (-not (Test-Path (Join-Path $dest 'MUDO.exe'))) { throw 'MUDO.exe não foi instalado' }
+          # sem Node: tira do PATH toda pasta que tenha node.exe
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -and -not (Test-Path (Join-Path $_ 'node.exe')) }) -join ';'
+          if (Get-Command node -ErrorAction SilentlyContinue) { throw 'node ainda está no PATH' }
+          $env:MUDO_DATA_DIR = Join-Path $env:RUNNER_TEMP 'dados MUDO ação'
+          $cli = Join-Path $dest 'resources\cli\mudo.cmd'
+          $out = & $cli channel create --name 'Canal Ação' --niche 'teste' --lang pt-BR --json
+          if ($LASTEXITCODE -ne 0) { throw "CLI falhou ($LASTEXITCODE)" }
+          $channel = ($out | ConvertFrom-Json).channelId
+          # app instalado: o runner dele precisa pegar o vídeo e parar pedindo a chave
+          $app = Start-Process -FilePath (Join-Path $dest 'MUDO.exe') -PassThru
+          $gen = & $cli generate --theme 'Teste do instalador' --channel $channel --json | ConvertFrom-Json
+          $deadline = (Get-Date).AddSeconds(120)
+          do {
+            Start-Sleep -Seconds 2
+            $st = & $cli status $gen.jobId --json | ConvertFrom-Json
+          } while ($st.state -ne 'needs_input' -and (Get-Date) -lt $deadline)
+          Stop-Process -Id $app.Id -Force
+          if ($st.state -ne 'needs_input' -or $st.error.code -ne 'MISSING_KEY') { throw "estado inesperado: $($st | ConvertTo-Json -Compress)" }
+          if ($dest.StartsWith($env:ProgramFiles)) { throw 'instalou em Program Files' }
+          Write-Host "Instalado em $dest e funcionando sem Node e sem admin."
+
+      - name: Desinstalar
+        if: always()
+        run: |
+          $u = Join-Path $env:LOCALAPPDATA 'Programs\MUDO Teste ação\Uninstall MUDO.exe'
+          if (Test-Path $u) { Start-Process -FilePath $u -ArgumentList '/S' -Wait }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mudo-windows
+          path: |
+            mudo/release/MUDO-Setup-*-x64.exe
+            mudo/release/MUDO-Portable-*-x64.exe
+          retention-days: 7

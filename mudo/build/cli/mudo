@@ -1,0 +1,4 @@
+#!/bin/sh
+# CLI do MUDO (Linux): mesmo executável do app em modo Node.
+here="$(cd "$(dirname "$0")" && pwd)"
+ELECTRON_RUN_AS_NODE=1 exec "$here/../../mudo" "$here/../app.asar/out/main/cli.js" "$@"
