@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto'
 import type { Logger } from 'pino'
 import { DEFAULTS, STAGES, type Stage } from '../../shared/enums'
 import type { DbHandle } from '../db'
+import type { MediaBinaries } from '../media/ffmpeg'
+import type { ProviderSource } from '../providers/registry'
 import { jobWorkDir, type DataPaths } from '../paths'
 import { STAGE_WEIGHTS, type JobContext, type JobHandlers, type SharedResource } from '../pipeline/context'
 import { commandName, isSameProcessAlive, killPidTree, runProcess } from '../proc/spawn'
@@ -15,12 +17,16 @@ export interface RunnerOptions {
   paths: DataPaths
   log: Logger
   handlers: JobHandlers
+  providers: ProviderSource
+  media: MediaBinaries
   concurrency?: number
   assembleConcurrency?: number
   orphanAfterMs?: number
   heartbeatMs?: number
   reaperIntervalMs?: number
   pollMs?: number
+  /** Se definido, o runner só pega estes jobs (CLI `--wait`). */
+  onlyJobIds?: ReadonlySet<string>
   /** Notificado a cada mudança relevante de um job (para a UI). */
   onChange?: (jobId: string) => void
 }
@@ -67,7 +73,7 @@ export class Runner {
   private stopping = false
   private ticking = false
   private concurrency: number
-  private readonly o: Required<Omit<RunnerOptions, 'onChange' | 'concurrency'>> & Pick<RunnerOptions, 'onChange'>
+  private readonly o: Required<Omit<RunnerOptions, 'onChange' | 'concurrency' | 'onlyJobIds'>> & Pick<RunnerOptions, 'onChange' | 'onlyJobIds'>
 
   constructor(opts: RunnerOptions) {
     this.o = {
@@ -141,7 +147,14 @@ export class Runner {
     this.ticking = true
     try {
       while (!this.stopping && this.active.size < this.concurrency) {
-        const job = this.queue.claim(this.id)
+        let job: JobRow | null = null
+        if (this.o.onlyJobIds) {
+          for (const id of this.o.onlyJobIds) {
+            if (this.active.has(id)) continue
+            job = this.queue.claim(this.id, id)
+            if (job) break
+          }
+        } else job = this.queue.claim(this.id)
         if (!job) break
         this.launch(job)
       }
@@ -175,6 +188,7 @@ export class Runner {
     }, this.o.heartbeatMs)
 
     let checkpoint: unknown = job.checkpoint
+    let costCents = job.costCents
     const timings: StageTimings = { ...((job.stageTimings ?? {}) as StageTimings) }
     let stage: Stage | null = null
     let stageStart = 0
@@ -205,6 +219,9 @@ export class Runner {
       workDir: dir,
       tmpDir: tmp,
       log: jlog,
+      db: this.o.handle,
+      providers: this.o.providers,
+      media: this.o.media,
       enterStage: (s) => {
         flushTiming()
         stage = s
@@ -225,6 +242,15 @@ export class Runner {
       saveCheckpoint: (cp) => {
         checkpoint = cp
         write({ checkpoint: cp })
+      },
+      elapsedMs: () => {
+        const done = Object.values(timings).reduce((a, b) => a + (b ?? 0), 0)
+        return done + (stage ? Date.now() - stageStart : 0)
+      },
+      addCost: (cents) => {
+        if (!Number.isFinite(cents) || cents <= 0) return
+        costCents += cents
+        write({ costCents })
       },
       acquire: (resource) => this.resources[resource].acquire(signal),
       spawn: (command, args, opts) =>

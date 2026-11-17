@@ -1,9 +1,7 @@
 import type { JobHandlers } from './context'
-import { selftestHandler } from './selftest'
+import { videoHandler } from './video'
 
-/** Handlers por tipo de job. Fase 1: apenas o job de teste. */
+/** Handlers por tipo de job. */
 export const jobHandlers: JobHandlers = {
-  selftest: selftestHandler,
+  video: videoHandler,
 }
-
-export { selftestHandler, selftestPayloadSchema, SELFTEST_STEPS } from './selftest'

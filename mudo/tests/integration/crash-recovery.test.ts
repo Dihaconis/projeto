@@ -2,7 +2,8 @@ import { spawn, type ChildProcess } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { JobQueue, SELFTEST_STEPS } from '../../src/core'
+import { JobQueue } from '../../src/core'
+import { SELFTEST_STEPS } from '../helpers/selftest-handler'
 import { isAlive, makeEnv, waitFor, type TestEnv } from '../helpers/env'
 
 const CHILD = path.resolve(__dirname, '../helpers/runner-child.ts')
@@ -28,7 +29,7 @@ describe('sobrevive a matar o processo (kill -9) durante a montagem', () => {
   it('retoma do último segmento renderizado sem refazer etapas anteriores', async () => {
     env = makeEnv()
     const q = new JobQueue(env.handle)
-    const job = q.enqueue({ kind: 'selftest', payload: { stepMs: 400 } })
+    const job = q.enqueue({ kind: 'video', payload: { stepMs: 400 } })
     const orphanMs = 1500
 
     const first = startRunner(env.paths.root, orphanMs)
@@ -61,7 +62,7 @@ describe('sobrevive a matar o processo (kill -9) durante a montagem', () => {
         expect(lines.filter((l) => l === `${s}:${n}`)).toHaveLength(1)
       }
     }
-    expect(new Set(lines).size).toBe(Object.values(SELFTEST_STEPS).reduce((a, b) => a + b, 0))
+    expect(new Set(lines).size).toBe(Object.values(SELFTEST_STEPS).reduce((a: number, b: number) => a + b, 0))
     for (let n = 1; n <= SELFTEST_STEPS.assemble; n++) {
       expect(fs.existsSync(path.join(env.paths.work, job.id, 'assemble', `${n}.json`))).toBe(true)
     }

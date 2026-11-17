@@ -31,7 +31,7 @@ export const videos = sqliteTable('videos', {
   progress: real('progress').notNull().default(0),
   title: text('title'),
   description: text('description'),
-  costCents: integer('cost_cents').notNull().default(0),
+  costCents: real('cost_cents').notNull().default(0),
   outputPath: text('output_path'),
   thumbPath: text('thumb_path'),
   genTimeS: real('gen_time_s'),
@@ -43,9 +43,9 @@ export const jobs = sqliteTable(
   'jobs',
   {
     id: text('id').primaryKey(),
-    /** Tipo do job; `selftest` existe só na Fase 1. */
+    /** Tipo do job. */
     kind: text('kind', { enum: JOB_KINDS }).notNull(),
-    /** Nulo apenas para `selftest`, que não tem vídeo associado. */
+    /** Vídeo gerado por este job. */
     videoId: text('video_id').references(() => videos.id),
     state: text('state', { enum: JOB_STATES }).notNull(),
     stage: text('stage', { enum: STAGES }),
@@ -58,7 +58,7 @@ export const jobs = sqliteTable(
     lockedBy: text('locked_by'),
     lockedAt: integer('locked_at'),
     heartbeatAt: integer('heartbeat_at'),
-    costCents: integer('cost_cents').notNull().default(0),
+    costCents: real('cost_cents').notNull().default(0),
     stageTimings: text('stage_timings', { mode: 'json' }).notNull(),
     createdAt: integer('created_at').notNull().default(now),
     updatedAt: integer('updated_at').notNull().default(now),
@@ -184,7 +184,7 @@ export const providerLog = sqliteTable('provider_log', {
   tokensIn: integer('tokens_in'),
   tokensOut: integer('tokens_out'),
   chars: integer('chars'),
-  costCents: integer('cost_cents').notNull().default(0),
+  costCents: real('cost_cents').notNull().default(0),
   latencyMs: integer('latency_ms'),
   createdAt: integer('created_at').notNull().default(now),
 })

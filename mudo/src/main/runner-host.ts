@@ -6,6 +6,7 @@ import { fromRunnerSchema, toRunnerSchema, type FromRunner, type ToRunner } from
 
 export interface RunnerHostOptions {
   dataDir: string
+  binDir: string | null
   concurrency: number
   orphanAfterMs: number
   log: Logger
@@ -74,6 +75,7 @@ export class RunnerHost {
     this.send({
       type: 'init',
       dataDir: this.o.dataDir,
+      binDir: this.o.binDir,
       concurrency: this.o.concurrency,
       orphanAfterMs: this.o.orphanAfterMs,
     })

@@ -1,4 +1,4 @@
-import { AlertTriangle, FileText, Loader2, Play, RotateCcw, X } from 'lucide-react'
+import { AlertTriangle, FileText, Loader2, RotateCcw, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { JOB_STATE_LABELS, STAGES, STAGE_LABELS, type JobState } from '../../../shared/enums'
 import type { JobView, RunnerStatus } from '../../../shared/ipc'
@@ -18,19 +18,12 @@ const STATE_TONE: Record<JobState, 'neutral' | 'info' | 'success' | 'warning' | 
   cancelled: 'neutral',
 }
 
-const SPEEDS = [
-  { label: 'Rápido', stepMs: 150 },
-  { label: 'Normal', stepMs: 400 },
-  { label: 'Lento', stepMs: 1500 },
-] as const
-
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ok'; jobs: JobView[] }
 
 export function QueueScreen({ runner }: { runner: RunnerStatus | null }) {
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [busy, setBusy] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-  const [stepMs, setStepMs] = useState<number>(400)
   const [, setTick] = useState(0)
 
   const refresh = useCallback(async () => {
@@ -64,12 +57,12 @@ export function QueueScreen({ runner }: { runner: RunnerStatus | null }) {
     }
   }, [refresh])
 
-  const act = async (key: string, fn: () => Promise<{ ok: boolean; message?: string } | { id: string }>) => {
+  const act = async (key: string, fn: () => Promise<{ ok: boolean; message?: string }>) => {
     setBusy(key)
     setActionError(null)
     try {
       const r = await fn()
-      if ('ok' in r && !r.ok) setActionError(r.message ?? 'Ação não permitida.')
+      if (!r.ok) setActionError(r.message ?? 'Ação não permitida.')
       await refresh()
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e))
@@ -84,31 +77,8 @@ export function QueueScreen({ runner }: { runner: RunnerStatus | null }) {
         <div>
           <h1 className="text-[15px] font-semibold">Fila de jobs</h1>
           <p className="text-xs text-muted-foreground">
-            Fase 1 — job de teste: percorre as etapas reais, grava checkpoints e roda um processo filho na montagem. Não gera vídeo.
+            Vídeos em produção e concluídos. Para gerar, use a CLI: <code className="font-mono">mudo generate --theme "…" --channel &lt;id&gt;</code>
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex overflow-hidden rounded-md border border-border" role="radiogroup" aria-label="Velocidade do job de teste">
-            {SPEEDS.map((s) => (
-              <button
-                key={s.stepMs}
-                role="radio"
-                aria-checked={stepMs === s.stepMs}
-                onClick={() => setStepMs(s.stepMs)}
-                className={cn('h-8 px-2.5 text-xs', stepMs === s.stepMs ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-muted')}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-          <Button
-            data-testid="enqueue-selftest"
-            disabled={busy === 'enqueue'}
-            onClick={() => act('enqueue', () => mudo.invoke('jobs:enqueueSelftest', { stepMs }))}
-          >
-            {busy === 'enqueue' ? <Loader2 className="animate-spin" /> : <Play />}
-            Enfileirar job de teste
-          </Button>
         </div>
       </header>
 
@@ -151,9 +121,9 @@ export function QueueScreen({ runner }: { runner: RunnerStatus | null }) {
         )}
         {load.status === 'ok' && load.jobs.length === 0 && (
           <Card className="p-8 text-center">
-            <p className="font-medium">Nenhum job na fila.</p>
+            <p className="font-medium">Nenhum vídeo na fila.</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Enfileire um job de teste. Você pode fechar o app ou matar o processo no meio: ao reabrir, ele continua do último checkpoint.
+              Crie um canal e gere um vídeo pela CLI. Se o app fechar no meio, ao reabrir a geração continua do último checkpoint.
             </p>
           </Card>
         )}
@@ -162,7 +132,7 @@ export function QueueScreen({ runner }: { runner: RunnerStatus | null }) {
             <table className="w-full text-left" data-testid="jobs-table">
               <thead className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Job</th>
+                  <th className="px-3 py-2 font-medium">Vídeo</th>
                   <th className="px-3 py-2 font-medium">Estado</th>
                   <th className="px-3 py-2 font-medium">Etapa</th>
                   <th className="w-[28%] px-3 py-2 font-medium">Progresso</th>
@@ -202,8 +172,8 @@ function JobRowView({
   return (
     <tr className="border-b border-border last:border-0 align-top" data-testid="job-row" data-job-id={j.id} data-state={j.state} data-stage={j.stage ?? ''}>
       <td className="px-3 py-2.5">
-        <div className="font-mono text-xs">{j.id.slice(0, 8)}</div>
-        <div className="text-[11px] text-muted-foreground">Job de teste</div>
+        <div className="max-w-[260px] truncate" title={j.title ?? j.theme ?? ''}>{j.title ?? j.theme ?? 'Vídeo'}</div>
+        <div className="font-mono text-[11px] text-muted-foreground">{j.id.slice(0, 8)}</div>
       </td>
       <td className="px-3 py-2.5">
         <Badge tone={STATE_TONE[j.state]}>{JOB_STATE_LABELS[j.state]}</Badge>

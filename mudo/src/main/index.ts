@@ -8,10 +8,10 @@ import {
   cleanupJobTemp,
   createLogger,
   dataPaths,
-  defaultDataRoot,
   ensureDataDirs,
   getSetting,
   jobErrorSchema,
+  listVideos,
   migrateDatabase,
   openDatabase,
   type JobRow,
@@ -20,6 +20,8 @@ import { DEFAULTS } from '../shared/enums'
 import type { JobView, RunnerStatus } from '../shared/ipc'
 import { registerIpc, UserFacingError } from './ipc'
 import { RunnerHost } from './runner-host'
+import { SafeStorageSecretStore } from './secret-store'
+import { runSecretsHelper } from './secrets-helper'
 
 // ---- pasta de dados: %APPDATA%/MUDO (ou MUDO_DATA_DIR) ----
 const dataRoot = process.env.MUDO_DATA_DIR ? path.resolve(process.env.MUDO_DATA_DIR) : path.join(app.getPath('appData'), 'MUDO')
@@ -29,7 +31,9 @@ ensureDataDirs(paths)
 app.setPath('userData', path.join(dataRoot, 'chromium'))
 app.setPath('crashDumps', path.join(paths.logs, 'crash'))
 
-if (!app.requestSingleInstanceLock()) {
+const secretStore = new SafeStorageSecretStore(paths.config)
+const helperMode = process.argv.includes('--mudo-secrets-helper')
+if (!helperMode && !app.requestSingleInstanceLock()) {
   app.quit()
   process.exit(0)
 }
@@ -40,7 +44,7 @@ function migrationsDir(): string {
   return app.isPackaged ? path.join(process.resourcesPath, 'migrations') : path.join(app.getAppPath(), 'migrations')
 }
 
-function toView(j: JobRow): JobView {
+function toView(j: JobRow, v: { title: string | null; theme: string } | undefined): JobView {
   const parsedErr = jobErrorSchema.safeParse(j.lastError)
   const err = parsedErr.success ? parsedErr.data : null
   return {
@@ -56,6 +60,8 @@ function toView(j: JobRow): JobView {
     createdAt: j.createdAt,
     updatedAt: j.updatedAt,
     finishedAt: j.finishedAt,
+    title: v?.title ?? null,
+    theme: v?.theme ?? null,
   }
 }
 
@@ -79,11 +85,19 @@ async function main(): Promise<void> {
   const concurrency = getSetting(handle, SETTING_KEYS.concurrency, z.number().int().min(1).max(8), DEFAULTS.concurrency)
   const runner = new RunnerHost({
     dataDir: dataRoot,
+    binDir: app.isPackaged ? path.join(process.resourcesPath, 'bin') : null,
     concurrency,
     orphanAfterMs,
     log,
     onMessage: (m) => {
       if (m.type === 'job-changed') broadcast('jobs:changed', { jobId: m.jobId })
+      else if (m.type === 'get-secret') {
+        // chave vai só para o runner (utilityProcess), nunca para o renderer
+        void secretStore
+          .get(m.id)
+          .catch(() => null)
+          .then((value) => runner.send({ type: 'secret', reqId: m.reqId, value }))
+      }
     },
     onStatus: (s: RunnerStatus) => broadcast('runner:status', s),
   })
@@ -92,13 +106,9 @@ async function main(): Promise<void> {
 
   registerIpc(
     {
-      'jobs:list': () => queue.list().map(toView),
-      'jobs:enqueueSelftest': ({ stepMs }) => {
-        const job = queue.enqueue({ kind: 'selftest', payload: { stepMs } })
-        log.info({ jobId: job.id, stepMs }, 'job de teste enfileirado')
-        runner.send({ type: 'poke' })
-        broadcast('jobs:changed', { jobId: job.id })
-        return { id: job.id }
+      'jobs:list': () => {
+        const vids = new Map(listVideos(handle).map((v) => [v.id, v]))
+        return queue.list().map((j) => toView(j, j.videoId ? vids.get(j.videoId) : undefined))
       },
       'jobs:cancel': ({ id }) => {
         const r = queue.cancel(id)
@@ -189,7 +199,9 @@ async function main(): Promise<void> {
   })
 }
 
-main().catch((err: unknown) => {
+if (helperMode) {
+  void runSecretsHelper(secretStore)
+} else main().catch((err: unknown) => {
   const msg = err instanceof Error ? (err.stack ?? err.message) : String(err)
   try {
     fs.appendFileSync(path.join(paths.logs, 'startup-error.log'), `${new Date().toISOString()} ${msg}\n`)

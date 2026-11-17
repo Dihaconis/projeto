@@ -15,6 +15,8 @@ export const jobViewSchema = z.object({
   createdAt: z.number(),
   updatedAt: z.number(),
   finishedAt: z.number().nullable(),
+  title: z.string().nullable(),
+  theme: z.string().nullable(),
 })
 export type JobView = z.infer<typeof jobViewSchema>
 
@@ -34,10 +36,6 @@ const okOutput = z.object({ ok: z.boolean(), message: z.string().optional() })
  */
 export const ipcContract = {
   'jobs:list': { input: z.undefined(), output: z.array(jobViewSchema) },
-  'jobs:enqueueSelftest': {
-    input: z.object({ stepMs: z.number().int().min(50).max(5000) }),
-    output: z.object({ id: z.string() }),
-  },
   'jobs:cancel': { input: idInput, output: okOutput },
   'jobs:resume': { input: idInput, output: okOutput },
   'runner:status': { input: z.undefined(), output: runnerStatusSchema },

@@ -15,9 +15,9 @@ afterEach(() => env.cleanup())
 describe('JobQueue', () => {
   it('enfileira e reivindica em ordem de criação, incrementando a tentativa', () => {
     const q = new JobQueue(env.handle, clock)
-    const a = q.enqueue({ kind: 'selftest', payload: {} })
+    const a = q.enqueue({ kind: 'video', payload: {} })
     now++
-    const b = q.enqueue({ kind: 'selftest', payload: {} })
+    const b = q.enqueue({ kind: 'video', payload: {} })
     expect(a.state).toBe('queued')
 
     const c1 = q.claim('r1')
@@ -35,7 +35,7 @@ describe('JobQueue', () => {
     const other = openDatabase(env.paths.db)
     const q2 = new JobQueue(other, clock)
     for (let i = 0; i < 20; i++) {
-      q1.enqueue({ kind: 'selftest', payload: {} })
+      q1.enqueue({ kind: 'video', payload: {} })
       now++
     }
     const got = new Set<string>()
@@ -51,7 +51,7 @@ describe('JobQueue', () => {
 
   it('escritas do runner exigem posse; cancelar tira a posse', () => {
     const q = new JobQueue(env.handle, clock)
-    const j = q.enqueue({ kind: 'selftest', payload: {} })
+    const j = q.enqueue({ kind: 'video', payload: {} })
     q.claim('r1')
     expect(q.heartbeat(j.id, 'r1')).toBe(true)
     expect(q.heartbeat(j.id, 'outro')).toBe(false)
@@ -69,7 +69,7 @@ describe('JobQueue', () => {
 
   it('não cancela job pronto e retoma cancelado/falho/needs_input do checkpoint', () => {
     const q = new JobQueue(env.handle, clock)
-    const j = q.enqueue({ kind: 'selftest', payload: {} })
+    const j = q.enqueue({ kind: 'video', payload: {} })
     q.claim('r1')
     q.update(j.id, 'r1', { checkpoint: { steps: { 'script:1': true } } })
     q.finish(j.id, 'r1', { state: 'needs_input', error: { code: 'PROVIDER_REFUSAL', message: 'recusado' } })
@@ -90,7 +90,7 @@ describe('JobQueue', () => {
 
   it('devolução por desligamento não gasta tentativa', () => {
     const q = new JobQueue(env.handle, clock)
-    const j = q.enqueue({ kind: 'selftest', payload: {} })
+    const j = q.enqueue({ kind: 'video', payload: {} })
     q.claim('r1')
     q.finish(j.id, 'r1', { state: 'queued', countAttempt: false })
     expect(q.get(j.id)).toMatchObject({ state: 'queued', attempt: 0, lockedBy: null })
@@ -101,7 +101,7 @@ describe('JobQueue', () => {
 
   it('órfão: heartbeat > limite volta para a fila; esgotou tentativas → failed', () => {
     const q = new JobQueue(env.handle, clock)
-    const j = q.enqueue({ kind: 'selftest', payload: {}, maxAttempts: 2 })
+    const j = q.enqueue({ kind: 'video', payload: {}, maxAttempts: 2 })
     q.claim('morto')
     now += 59_000
     expect(q.findOrphans(60_000)).toHaveLength(0)
@@ -119,7 +119,7 @@ describe('JobQueue', () => {
 
   it('registra e lista processos filhos por job', () => {
     const q = new JobQueue(env.handle, clock)
-    const j = q.enqueue({ kind: 'selftest', payload: {} })
+    const j = q.enqueue({ kind: 'video', payload: {} })
     q.addProc(j.id, 1234, 'ffmpeg')
     q.addProc(j.id, 1234, 'ffmpeg')
     expect(q.listProcs(j.id)).toHaveLength(1)

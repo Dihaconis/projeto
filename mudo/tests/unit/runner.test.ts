@@ -6,12 +6,13 @@ import {
   JobError,
   NeedsInputError,
   Runner,
-  SELFTEST_STEPS,
-  jobHandlers,
   nullLogger,
+  resolveMediaBinaries,
   type JobHandlers,
   type RunnerOptions,
 } from '../../src/core'
+import { SELFTEST_STEPS, testHandlers } from '../helpers/selftest-handler'
+import { noProviders } from '../helpers/fixtures'
 import { STAGES } from '../../src/shared/enums'
 import { isAlive, makeEnv, waitFor, type TestEnv } from '../helpers/env'
 
@@ -31,7 +32,9 @@ function makeRunner(opts: Partial<RunnerOptions> = {}): Runner {
     handle: env.handle,
     paths: env.paths,
     log: nullLogger(),
-    handlers: jobHandlers,
+    handlers: testHandlers,
+    providers: noProviders,
+    media: resolveMediaBinaries(),
     pollMs: 20,
     heartbeatMs: 50,
     reaperIntervalMs: 100,
@@ -47,7 +50,7 @@ const execLines = (key: string) =>
 describe('Runner + job de teste (Fase 1)', () => {
   it('percorre todas as etapas, grava artefatos, checkpoint e tempos por etapa', async () => {
     const r = makeRunner()
-    const job = r.queue.enqueue({ kind: 'selftest', payload: { stepMs: 20 } })
+    const job = r.queue.enqueue({ kind: 'video', payload: { stepMs: 20 } })
     r.start()
     const done = await waitFor(() => {
       const j = r.queue.get(job.id)
@@ -62,7 +65,7 @@ describe('Runner + job de teste (Fase 1)', () => {
         expect(fs.existsSync(path.join(env.paths.work, job.id, s, `${n}.json`))).toBe(true)
       }
     }
-    const total = Object.values(SELFTEST_STEPS).reduce((a, b) => a + b, 0)
+    const total = Object.values(SELFTEST_STEPS).reduce((a: number, b: number) => a + b, 0)
     expect(execLines(job.id)).toHaveLength(total)
     expect(r.queue.listProcs(job.id)).toHaveLength(0)
   })
@@ -73,7 +76,7 @@ describe('Runner + job de teste (Fase 1)', () => {
     let assembling = 0
     let maxAssembling = 0
     const handlers: JobHandlers = {
-      selftest: async (ctx) => {
+      video: async (ctx) => {
         running++
         maxRunning = Math.max(maxRunning, running)
         ctx.enterStage('script')
@@ -89,7 +92,7 @@ describe('Runner + job de teste (Fase 1)', () => {
       },
     }
     const r = makeRunner({ handlers, concurrency: 2 })
-    const ids = Array.from({ length: 5 }, () => r.queue.enqueue({ kind: 'selftest', payload: {} }).id)
+    const ids = Array.from({ length: 5 }, () => r.queue.enqueue({ kind: 'video', payload: {} }).id)
     r.start()
     await waitFor(() => ids.every((id) => r.queue.get(id)?.state === 'done'))
     expect(maxRunning).toBe(2)
@@ -98,7 +101,7 @@ describe('Runner + job de teste (Fase 1)', () => {
 
   it('cancelar durante a montagem mata o processo filho e limpa temporários', async () => {
     const r = makeRunner()
-    const job = r.queue.enqueue({ kind: 'selftest', payload: { stepMs: 3000 } })
+    const job = r.queue.enqueue({ kind: 'video', payload: { stepMs: 3000 } })
     // pula direto para a montagem marcando as etapas anteriores como feitas
     const steps: Record<string, true> = {}
     for (const s of ['script', 'review', 'images', 'tts'] as const) {
@@ -126,7 +129,7 @@ describe('Runner + job de teste (Fase 1)', () => {
 
   it('retomar após cancelar continua do checkpoint, sem refazer passos', async () => {
     const r = makeRunner()
-    const job = r.queue.enqueue({ kind: 'selftest', payload: { stepMs: 80 } })
+    const job = r.queue.enqueue({ kind: 'video', payload: { stepMs: 80 } })
     r.start()
     await waitFor(() => r.queue.get(job.id)?.stage === 'tts')
     r.queue.cancel(job.id)
@@ -138,21 +141,21 @@ describe('Runner + job de teste (Fase 1)', () => {
     // passos concluídos antes do cancelamento não rodam de novo
     const doneBefore = before.slice(0, -1) // o último pode ter sido interrompido
     for (const k of doneBefore) expect(after.filter((x) => x === k)).toHaveLength(1)
-    expect(new Set(after).size).toBe(Object.values(SELFTEST_STEPS).reduce((a, b) => a + b, 0))
+    expect(new Set(after).size).toBe(Object.values(SELFTEST_STEPS).reduce((a: number, b: number) => a + b, 0))
   })
 
   it('NeedsInputError → needs_input com mensagem; sem nova tentativa automática', async () => {
     let calls = 0
     const r = makeRunner({
       handlers: {
-        selftest: async (ctx) => {
+        video: async (ctx) => {
           calls++
           ctx.enterStage('script')
           throw new NeedsInputError('PROVIDER_REFUSAL', 'O provedor recusou o tema.')
         },
       },
     })
-    const job = r.queue.enqueue({ kind: 'selftest', payload: {} })
+    const job = r.queue.enqueue({ kind: 'video', payload: {} })
     r.start()
     const j = await waitFor(() => (r.queue.get(job.id)?.state === 'needs_input' ? r.queue.get(job.id) : null))
     expect(j?.lastError).toEqual({ code: 'PROVIDER_REFUSAL', message: 'O provedor recusou o tema.' })
@@ -164,20 +167,20 @@ describe('Runner + job de teste (Fase 1)', () => {
     let calls = 0
     const r = makeRunner({
       handlers: {
-        selftest: async (ctx) => {
+        video: async (ctx) => {
           calls++
           if ((ctx.job.payload as { fatal?: boolean }).fatal) throw new Error('quebrou')
           throw new JobError('INTERNAL', 'timeout', true)
         },
       },
     })
-    const a = r.queue.enqueue({ kind: 'selftest', payload: {}, maxAttempts: 3 })
+    const a = r.queue.enqueue({ kind: 'video', payload: {}, maxAttempts: 3 })
     r.start()
     const ja = await waitFor(() => (r.queue.get(a.id)?.state === 'failed' ? r.queue.get(a.id) : null))
     expect(ja?.attempt).toBe(3)
     expect(calls).toBe(3)
 
-    const b = r.queue.enqueue({ kind: 'selftest', payload: { fatal: true }, maxAttempts: 3 })
+    const b = r.queue.enqueue({ kind: 'video', payload: { fatal: true }, maxAttempts: 3 })
     const jb = await waitFor(() => (r.queue.get(b.id)?.state === 'failed' ? r.queue.get(b.id) : null))
     expect(jb?.attempt).toBe(1)
     expect(jb?.lastError).toMatchObject({ code: 'INTERNAL', message: 'quebrou' })
@@ -185,7 +188,7 @@ describe('Runner + job de teste (Fase 1)', () => {
 
   it('desligar o runner devolve o job à fila sem gastar tentativa; outro runner termina', async () => {
     const r1 = makeRunner()
-    const job = r1.queue.enqueue({ kind: 'selftest', payload: { stepMs: 50 } })
+    const job = r1.queue.enqueue({ kind: 'video', payload: { stepMs: 50 } })
     r1.start()
     await waitFor(() => r1.queue.get(job.id)?.stage === 'images')
     await r1.stop()
@@ -199,7 +202,7 @@ describe('Runner + job de teste (Fase 1)', () => {
 
   it('runner novo recupera órfão de runner morto (heartbeat velho)', async () => {
     const r = makeRunner({ orphanAfterMs: 300 })
-    const job = r.queue.enqueue({ kind: 'selftest', payload: { stepMs: 10 } })
+    const job = r.queue.enqueue({ kind: 'video', payload: { stepMs: 10 } })
     // simula runner morto: job "running" com heartbeat antigo
     env.handle.sqlite
       .prepare("UPDATE jobs SET state='running', locked_by='morto', attempt=1, heartbeat_at=? WHERE id=?")
@@ -210,8 +213,8 @@ describe('Runner + job de teste (Fase 1)', () => {
   })
 
   it('reaper mata processo filho deixado por runner morto antes de reenfileirar', async () => {
-    const r = makeRunner({ orphanAfterMs: 300, handlers: { selftest: async () => undefined } })
-    const job = r.queue.enqueue({ kind: 'selftest', payload: {} })
+    const r = makeRunner({ orphanAfterMs: 300, handlers: { video: async () => undefined } })
+    const job = r.queue.enqueue({ kind: 'video', payload: {} })
     // "ffmpeg" órfão: processo longo de um runner que morreu
     const stray = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { detached: true, stdio: 'ignore' })
     stray.unref()

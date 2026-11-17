@@ -2,18 +2,19 @@
  * E2E no app Electron real (build em out/). Requer `npm run build` antes e,
  * no Linux sem tela, rodar sob xvfb (`npm run test:e2e`).
  */
-import { execFileSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 import { afterEach, describe, expect, it } from 'vitest'
-import { JobQueue, SELFTEST_STEPS, dataPaths, openDatabase } from '../../src/core'
-import { tempRoot, waitFor } from '../helpers/env'
+import { helperSecrets } from '../../src/cli/helper-secrets'
+import { createChannel, createVideoJob, dataPaths, migrateDatabase, openDatabase } from '../../src/core'
+import { MIGRATIONS_DIR, tempRoot } from '../helpers/env'
 
 const APP_DIR = path.resolve(__dirname, '../..')
 const ELECTRON = require('electron') as unknown as string
 
-let roots: string[] = []
+const roots: string[] = []
 let apps: ElectronApplication[] = []
 
 afterEach(async () => {
@@ -21,100 +22,41 @@ afterEach(async () => {
   for (const r of roots.splice(0)) fs.rmSync(r, { recursive: true, force: true })
 })
 
-async function launch(dataDir: string): Promise<{ app: ElectronApplication; page: Page }> {
+function cleanEnv(extra: Record<string, string>): Record<string, string> {
   const env: Record<string, string> = {}
-  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && k !== 'NODE_OPTIONS') env[k] = v
+  for (const [k, v] of Object.entries(process.env)) if (v !== undefined && k !== 'NODE_OPTIONS' && k !== 'ELECTRON_RUN_AS_NODE') env[k] = v
+  return { ...env, ...extra }
+}
+
+async function launch(dataDir: string): Promise<{ app: ElectronApplication; page: Page }> {
   const args = [APP_DIR]
   if (process.platform === 'linux') args.push('--no-sandbox') // contêiner como root
-  const app = await electron.launch({
-    executablePath: ELECTRON,
-    args,
-    env: { ...env, MUDO_DATA_DIR: dataDir, MUDO_ORPHAN_MS: '2000' },
-  })
+  const app = await electron.launch({ executablePath: ELECTRON, args, env: cleanEnv({ MUDO_DATA_DIR: dataDir, MUDO_ORPHAN_MS: '2000' }) })
   apps.push(app)
   const page = await app.firstWindow()
   await page.locator('[data-testid="runner-status"][data-state="running"]').waitFor({ timeout: 30_000 })
   return { app, page }
 }
 
-/** "Finalizar árvore de processos": mata o main e todos os descendentes. */
-function killTree(rootPid: number): void {
-  const all = new Set<number>([rootPid])
-  const walk = (pid: number) => {
-    let out = ''
-    try {
-      out = execFileSync('ps', ['-o', 'pid=', '--ppid', String(pid)], { encoding: 'utf8' })
-    } catch {
-      return
-    }
-    for (const s of out.split('\n').map((x) => Number(x.trim())).filter(Boolean)) {
-      all.add(s)
-      walk(s)
-    }
-  }
-  walk(rootPid)
-  for (const pid of all) {
-    try {
-      process.kill(pid, 'SIGKILL')
-    } catch {
-      // já morreu
-    }
-  }
-}
-
 describe('app Electron', () => {
-  it('job de teste sobrevive a matar o app durante a montagem e retoma do checkpoint', async () => {
+  it('runner do app pega o vídeo; sem chave → "aguardando você" com mensagem acionável; cancelar pela UI', async () => {
     const root = tempRoot('mudo e2e ação ')
     roots.push(root)
-    const first = await launch(root)
-    await first.page.getByRole('radio', { name: 'Normal' }).click()
-    await first.page.getByTestId('enqueue-selftest').click()
-    const row = first.page.getByTestId('job-row').first()
-    await row.waitFor()
-    const jobId = (await row.getAttribute('data-job-id'))!
-
     const h = openDatabase(dataPaths(root).db)
-    const q = new JobQueue(h)
-    await waitFor(() => {
-      const cp = q.get(jobId)?.checkpoint as { steps?: Record<string, true> }
-      return cp?.steps?.['assemble:1'] && q.listProcs(jobId).length > 0
-    }, 60_000)
-    expect(await first.page.locator(`[data-job-id="${jobId}"]`).getAttribute('data-state')).toBe('running')
-
-    const cpAtKill = q.get(jobId)!.checkpoint as { steps: Record<string, true> }
-    killTree(first.app.process().pid!)
-    apps = apps.filter((a) => a !== first.app)
-    expect(q.get(jobId)?.state).toBe('running') // ninguém teve chance de limpar
-
-    const second = await launch(root)
-    await second.page.locator(`[data-job-id="${jobId}"][data-state="done"]`).waitFor({ timeout: 60_000 })
-    const job = q.get(jobId)!
-    expect(job.state).toBe('done')
-    expect(job.attempt).toBe(2)
-
-    const lines = fs.readFileSync(path.join(root, 'work', jobId, 'exec.log'), 'utf8').trim().split('\n')
-    for (const k of Object.keys(cpAtKill.steps)) expect(lines.filter((l) => l === k)).toHaveLength(1)
-    expect(new Set(lines).size).toBe(Object.values(SELFTEST_STEPS).reduce((a, b) => a + b, 0))
+    migrateDatabase(h, { migrationsDir: MIGRATIONS_DIR, backupDir: dataPaths(root).backups })
+    const ch = createChannel(h, { name: 'Canal', niche: 'ciência', language: 'pt-BR' })
+    const { job } = createVideoJob(h, { channelId: ch.id, theme: 'Por que o céu é azul', durationS: 60 })
     h.close()
+
+    const { page } = await launch(root)
+    const row = page.locator(`[data-job-id="${job.id}"][data-state="needs_input"]`)
+    await row.waitFor({ timeout: 30_000 })
+    await expect(row.textContent()).resolves.toContain('Adicione uma chave de API')
+    await row.getByRole('button', { name: 'Cancelar' }).click()
+    await page.locator(`[data-job-id="${job.id}"][data-state="cancelled"]`).waitFor()
   })
 
-  it('fechar o app normalmente devolve o job à fila sem gastar tentativa', async () => {
-    const root = tempRoot('mudo e2e fechar ')
-    roots.push(root)
-    const { app, page } = await launch(root)
-    await page.getByRole('radio', { name: 'Lento' }).click()
-    await page.getByTestId('enqueue-selftest').click()
-    await page.locator('[data-testid="job-row"][data-state="running"]').waitFor()
-    await app.close()
-    apps = apps.filter((a) => a !== app)
-
-    const h = openDatabase(dataPaths(root).db)
-    const [job] = new JobQueue(h).list()
-    expect(job).toMatchObject({ state: 'queued', attempt: 0, lockedBy: null })
-    h.close()
-  })
-
-  it('renderer isolado: sem Node, só a ponte tipada; entrada inválida é recusada', async () => {
+  it('renderer isolado: sem Node, só a ponte tipada; entrada inválida e canal desconhecido recusados', async () => {
     const root = tempRoot('mudo e2e ponte ')
     roots.push(root)
     const { page } = await launch(root)
@@ -123,7 +65,7 @@ describe('app Electron', () => {
       let invalid = ''
       try {
         await w.mudo.invoke('jobs:cancel', { id: 'não-é-uuid' })
-      } catch (e) {
+      } catch {
         invalid = 'recusado'
       }
       let unknownChannel = ''
@@ -135,5 +77,50 @@ describe('app Electron', () => {
       return { require: typeof w.require, process: typeof w.process, invalid, unknownChannel }
     })
     expect(r).toEqual({ require: 'undefined', process: 'undefined', invalid: 'recusado', unknownChannel: 'recusado' })
+  })
+
+  it('chaves: CLI guarda via modo auxiliar do app (safeStorage); config.json não tem texto claro', async () => {
+    const root = tempRoot('mudo e2e chaves ')
+    roots.push(root)
+    process.env.MUDO_DATA_DIR = root
+    if (process.platform === 'linux') process.env.MUDO_ALLOW_BASIC_SECRET_STORE = '1'
+    try {
+      // Linux de CI não tem chaveiro: usa o backend "basic" do Chromium. No Windows é DPAPI.
+      const linux = process.platform === 'linux' ? ['--no-sandbox', '--password-store=basic'] : []
+      const s = helperSecrets({ exec: ELECTRON, args: [APP_DIR, ...linux] })
+      const secret = 'sk-ant-TESTE-NAO-REAL-1234567890'
+      expect(await s.set('anthropic', secret)).toEqual(['anthropic'])
+      expect(await s.list()).toEqual(['anthropic'])
+      expect(await s.get('anthropic')).toBe(secret)
+      const cfg = fs.readFileSync(path.join(root, 'config.json'), 'utf8')
+      expect(cfg).not.toContain(secret)
+      expect(cfg).not.toContain('TESTE-NAO-REAL')
+      // nem no banco nem nos logs
+      for (const f of fs.readdirSync(path.join(root, 'logs'), { recursive: true }) as string[]) {
+        const p = path.join(root, 'logs', f)
+        if (fs.statSync(p).isFile()) expect(fs.readFileSync(p, 'utf8')).not.toContain('TESTE-NAO-REAL')
+      }
+      expect(await s.remove('anthropic')).toEqual([])
+    } finally {
+      delete process.env.MUDO_DATA_DIR
+      delete process.env.MUDO_ALLOW_BASIC_SECRET_STORE
+    }
+  })
+
+  it('CLI compilada roda no executável do Electron em modo Node (sem Node instalado)', () => {
+    const root = tempRoot('mudo e2e cli ')
+    roots.push(root)
+    const run = (...args: string[]) =>
+      spawnSync(ELECTRON, [path.join(APP_DIR, 'out', 'main', 'cli.js'), ...args], {
+        env: cleanEnv({ ELECTRON_RUN_AS_NODE: '1', MUDO_DATA_DIR: root }),
+        encoding: 'utf8',
+      })
+    const c = run('channel', 'create', '--name', 'Canal Ação', '--niche', 'história', '--lang', 'es', '--json')
+    expect(c.stderr).toBe('')
+    expect(c.status).toBe(0)
+    const { channelId } = JSON.parse(c.stdout)
+    const l = run('channel', 'list', '--json')
+    expect(JSON.parse(l.stdout)[0]).toMatchObject({ channelId, name: 'Canal Ação', language: 'es' })
+    expect(run('generate', '--theme', 'x', '--channel', channelId).status).toBe(2)
   })
 })

@@ -69,7 +69,17 @@ export function migrateDatabase(
     pruneBackups(opts.backupDir, opts.keepBackups ?? 5)
   }
 
-  migrate(handle.db, { migrationsFolder: opts.migrationsDir })
+  // Migrações que recriam tabelas (padrão do SQLite para mudar tipo de coluna)
+  // precisam de FKs desligadas; o PRAGMA não tem efeito dentro da transação do
+  // migrator, então desliga aqui fora e confere a integridade no fim.
+  handle.sqlite.pragma('foreign_keys = OFF')
+  try {
+    migrate(handle.db, { migrationsFolder: opts.migrationsDir })
+    const broken = handle.sqlite.pragma('foreign_key_check') as unknown[]
+    if (broken.length > 0) throw new Error(`migração deixou ${broken.length} referência(s) quebrada(s); backup em ${backupPath}`)
+  } finally {
+    handle.sqlite.pragma('foreign_keys = ON')
+  }
   return { applied: pending, backupPath }
 }
 

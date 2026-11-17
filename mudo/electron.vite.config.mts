@@ -11,6 +11,7 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
           runner: resolve(__dirname, 'src/runner/index.ts'),
+          cli: resolve(__dirname, 'src/cli/index.ts'),
         },
       },
     },

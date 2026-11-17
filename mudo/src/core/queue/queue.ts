@@ -85,20 +85,43 @@ export class JobQueue {
     return r?.n ?? 0
   }
 
-  /** Reivindica atomicamente o job mais antigo na fila. */
-  claim(runnerId: string): JobRow | null {
+  /**
+   * Reivindica atomicamente o job mais antigo na fila — ou, com `onlyId`,
+   * apenas aquele job (CLI `--wait` processa só o que ela mesma criou).
+   */
+  claim(runnerId: string, onlyId?: string): JobRow | null {
     const t = this.clock()
+    const pick = onlyId
+      ? `SELECT id FROM jobs WHERE state = 'queued' AND id = @onlyId`
+      : `SELECT id FROM jobs WHERE state = 'queued' ORDER BY created_at, rowid LIMIT 1`
     const row = this.h.sqlite
       .prepare(
         `UPDATE jobs
             SET state = 'running', locked_by = @runnerId, locked_at = @t, heartbeat_at = @t,
                 attempt = attempt + 1, updated_at = @t
-          WHERE id = (SELECT id FROM jobs WHERE state = 'queued' ORDER BY created_at, rowid LIMIT 1)
+          WHERE id = (${pick})
             AND state = 'queued'
         RETURNING id`,
       )
-      .get({ runnerId, t }) as { id: string } | undefined
-    return row ? (this.get(row.id) ?? null) : null
+      .get({ runnerId, t, onlyId: onlyId ?? null }) as { id: string } | undefined
+    if (!row) return null
+    this.syncVideo(row.id)
+    return this.get(row.id) ?? null
+  }
+
+  /**
+   * Espelha estado/etapa/progresso/custo do job no vídeo, para que toda tela
+   * leia o mesmo valor (seção 18: nada de dado divergente entre telas).
+   */
+  private syncVideo(id: string): void {
+    this.h.sqlite
+      .prepare(
+        `UPDATE videos SET state = j.state, stage = j.stage, progress = j.progress, cost_cents = j.cost_cents,
+                finished_at = CASE WHEN j.state = 'done' THEN j.finished_at ELSE videos.finished_at END
+           FROM (SELECT video_id, state, stage, progress, cost_cents, finished_at FROM jobs WHERE id = ?) AS j
+          WHERE videos.id = j.video_id`,
+      )
+      .run(id)
   }
 
   private owned(id: string, runnerId: string) {
@@ -121,6 +144,7 @@ export class JobQueue {
     if (patch.stageTimings !== undefined) set.stageTimings = patch.stageTimings
     if (patch.costCents !== undefined) set.costCents = patch.costCents
     const r = this.h.db.update(jobs).set(set).where(this.owned(id, runnerId)).run()
+    if (r.changes === 1 && (patch.stage !== undefined || patch.progress !== undefined || patch.costCents !== undefined)) this.syncVideo(id)
     return r.changes === 1
   }
 
@@ -144,6 +168,7 @@ export class JobQueue {
         break
     }
     const r = this.h.db.update(jobs).set(set).where(this.owned(id, runnerId)).run()
+    if (r.changes === 1) this.syncVideo(id)
     return r.changes === 1
   }
 
@@ -169,6 +194,7 @@ export class JobQueue {
       })
       .where(and(eq(jobs.id, id), inArray(jobs.state, ['queued', 'running', 'needs_input', 'failed'])))
       .run()
+    if (r.changes === 1) this.syncVideo(id)
     return { ok: r.changes === 1, wasRunning: job.state === 'running', job: this.get(id) }
   }
 
@@ -180,6 +206,7 @@ export class JobQueue {
       .set({ state: 'queued', attempt: 0, lastError: null, finishedAt: null, updatedAt: t })
       .where(and(eq(jobs.id, id), inArray(jobs.state, ['failed', 'cancelled', 'needs_input'])))
       .run()
+    if (r.changes === 1) this.syncVideo(id)
     return { ok: r.changes === 1, job: this.get(id) }
   }
 
@@ -228,9 +255,11 @@ export class JobQueue {
           })
           .where(eq(jobs.id, id))
           .run()
+        this.syncVideo(id)
         return 'failed' as const
       }
       this.h.db.update(jobs).set({ ...base, state: 'queued' }).where(eq(jobs.id, id)).run()
+      this.syncVideo(id)
       return 'requeued' as const
     })()
   }

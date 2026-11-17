@@ -1,6 +1,6 @@
 /**
- * JOB DE TESTE DA FASE 1 — declarado como tal no briefing (seção 0) e removido
- * na Fase 2. Não gera vídeo: percorre as etapas reais do pipeline, grava um
+ * Handler de teste (só existe em /tests). Era o job de teste da Fase 1; saiu do
+ * produto na Fase 2 e ficou aqui para exercitar a fila sem provedores. Não gera vídeo: percorre as etapas reais do pipeline, grava um
  * artefato por passo em `work/<id>/`, registra checkpoint por passo e, na
  * montagem, executa um processo filho real (mesmo caminho que o ffmpeg usará)
  * com progresso lido do stderr. Serve para provar fila, retomada, cancelamento
@@ -9,10 +9,10 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { z } from 'zod'
-import { STAGES, type Stage } from '../../shared/enums'
-import { writeFileAtomic } from '../paths'
-import { JobError } from '../queue/errors'
-import type { JobContext, JobHandler } from './context'
+import { STAGES, type Stage } from '../../src/shared/enums'
+import { writeFileAtomic } from '../../src/core/paths'
+import { JobError } from '../../src/core/queue/errors'
+import type { JobContext, JobHandler, JobHandlers } from '../../src/core/pipeline/context'
 
 export const selftestPayloadSchema = z.object({
   /** Duração de cada passo em ms. */
@@ -92,7 +92,7 @@ export const selftestHandler: JobHandler = async (ctx: JobContext) => {
             },
           })
           if (r.code !== 0 || !fs.existsSync(segTmp)) {
-            throw new JobError('SELFTEST_FAILURE', `processo de segmento ${n} saiu com código ${r.code}`, true, {
+            throw new JobError('INTERNAL', `processo de segmento ${n} saiu com código ${r.code}`, true, {
               stderr: r.stderrTail,
             })
           }
@@ -112,3 +112,5 @@ export const selftestHandler: JobHandler = async (ctx: JobContext) => {
     }
   }
 }
+
+export const testHandlers: JobHandlers = { video: selftestHandler }
