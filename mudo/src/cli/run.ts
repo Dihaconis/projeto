@@ -32,6 +32,7 @@ import { importMusic, listMusic, MUSIC_LICENSES } from '../core/media/music'
 import { SECRET_IDS, secretIdSchema, SECRET_LABELS } from '../core/secrets'
 import { DURATION, LANGUAGES, LIBRARY_LICENSES, MUSIC_MOODS, STAGE_LABELS, TERMINAL_STATES, type JobState } from '../shared/enums'
 import { PLAN_IDS } from '../shared/plans'
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'
 import type { SecretsAdmin } from './helper-secrets'
 
 /** Códigos de saída estáveis (seção 13). */
@@ -54,6 +55,9 @@ export interface CliDeps {
   io: CliIO
   /** Intervalo de atualização do `--wait` (testes usam menor). */
   pollMs?: number
+  /** Transporte do `mudo mcp` (padrão: stdio). */
+  mcpTransport?: () => Transport
+  version?: string
 }
 
 class UsageError extends Error {}
@@ -76,6 +80,7 @@ const USAGE = `Uso:
   mudo keys list | mudo keys delete <id>
   mudo config set <chave> <valor>
   mudo quota [--json]
+  mudo mcp                                   (servidor MCP em stdio)
 
 Saída: 0 ok · 1 erro · 2 entrada inválida · 3 cota`
 
@@ -105,39 +110,8 @@ const CONFIG_KEYS: Record<string, z.ZodType> = {
   'speech.wpm.en': z.coerce.number().int().min(80).max(260),
 }
 
-export interface JobStatusJson {
-  jobId: string
-  videoId: string | null
-  state: JobState
-  stage: string | null
-  progress: number
-  attempt: number
-  error: { code: string; message: string } | null
-  title: string | null
-  outputPath: string | null
-  costCents: number
-  genTimeS: number | null
-  actualDurationS: number | null
-}
-
-function statusJson(h: DbHandle, j: JobRow): JobStatusJson {
-  const v = j.videoId ? getVideo(h, j.videoId) : undefined
-  const e = jobErrorSchema.safeParse(j.lastError)
-  return {
-    jobId: j.id,
-    videoId: j.videoId,
-    state: j.state,
-    stage: j.stage,
-    progress: Math.round(j.progress * 1000) / 1000,
-    attempt: j.attempt,
-    error: e.success ? { code: e.data.code, message: e.data.message } : null,
-    title: v?.title ?? null,
-    outputPath: v?.outputPath ?? null,
-    costCents: Math.round(j.costCents * 100) / 100,
-    genTimeS: v?.genTimeS ?? null,
-    actualDurationS: v?.actualDurationS ?? null,
-  }
-}
+export { statusJson, type JobStatusJson } from '../core/job-status'
+import { statusJson } from '../core/job-status'
 
 const money = (cents: number) => `US$ ${(cents / 100).toFixed(2)}`
 
@@ -202,6 +176,8 @@ async function dispatch(argv: string[], deps: CliDeps): Promise<number> {
       return keys(sub, rest, deps)
     case 'config':
       return config(sub, rest, deps)
+    case 'mcp':
+      return mcpCmd(deps)
     case 'quota':
       return quotaCmd([sub, ...rest].filter((x): x is string => x !== undefined), deps)
     default:
@@ -641,4 +617,40 @@ async function quotaCmd(args: string[], deps: CliDeps): Promise<number> {
   } finally {
     h.close()
   }
+}
+
+/**
+ * `mudo mcp`: servidor MCP em stdio (seção 14). O stdout passa a ser só do
+ * protocolo; registros vão para os logs. Fica de pé até o cliente fechar.
+ */
+async function mcpCmd(deps: CliDeps): Promise<number> {
+  const { createMcpServer } = await import('../mcp/server')
+  const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js')
+  const h = open(deps)
+  const paths = dataPaths(deps.dataRoot)
+  const mcp = createMcpServer({
+    handle: h,
+    paths,
+    providers: deps.providers(h),
+    media: deps.media,
+    log: deps.log ?? nullLogger(),
+    version: deps.version ?? '0.0.0',
+    ...(deps.pollMs ? { pollMs: deps.pollMs } : {}),
+  })
+  const transport = deps.mcpTransport ? deps.mcpTransport() : new StdioServerTransport()
+  const closed = new Promise<void>((resolve) => {
+    transport.onclose = () => resolve()
+    process.once('SIGINT', resolve)
+    process.once('SIGTERM', resolve)
+    // o transporte stdio não avisa quando o cliente fecha o stdin
+    if (!deps.mcpTransport) process.stdin.once('end', resolve)
+  })
+  mcp.runner.start()
+  await mcp.server.connect(transport)
+  deps.log?.info('servidor MCP iniciado')
+  await closed
+  await mcp.close()
+  h.close()
+  deps.log?.info('servidor MCP encerrado')
+  return EXIT.ok
 }

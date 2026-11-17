@@ -183,6 +183,37 @@ describe('app Electron', () => {
     db.close()
   })
 
+  it('MCP em stdio pela CLI compilada: lista ferramentas, cria canal e responde job_status', async () => {
+    const root = tempRoot('mudo e2e mcp ')
+    roots.push(root)
+    const { Client } = await import('@modelcontextprotocol/sdk/client/index.js')
+    const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js')
+    const transport = new StdioClientTransport({
+      command: ELECTRON,
+      args: [path.join(APP_DIR, 'out', 'main', 'cli.js'), 'mcp'],
+      env: cleanEnv({ ELECTRON_RUN_AS_NODE: '1', MUDO_DATA_DIR: root }),
+      stderr: 'pipe',
+    })
+    const client = new Client({ name: 'e2e', version: '1.0.0' })
+    await client.connect(transport)
+    try {
+      const { tools } = await client.listTools()
+      expect(tools.map((t) => t.name).sort()).toEqual(['channel_create', 'cost_estimate', 'generate_video', 'job_status', 'library_list'])
+      const ch = (await client.callTool({ name: 'channel_create', arguments: { name: 'Canal MCP', niche: 'história', language: 'en' } })) as unknown as {
+        structuredContent: { channelId: string }
+      }
+      expect(ch.structuredContent.channelId).toMatch(/^[0-9a-f-]{36}$/)
+      const st = (await client.callTool({ name: 'job_status', arguments: { job_id: 'nao-existe' } })) as { isError: boolean }
+      expect(st.isError).toBe(true)
+    } finally {
+      await client.close()
+    }
+    // o canal foi gravado no banco de dados do app
+    const db = openDatabase(path.join(root, 'mudo.db'))
+    expect(db.sqlite.prepare('SELECT name FROM channels').get()).toEqual({ name: 'Canal MCP' })
+    db.close()
+  })
+
   it('Canais, Configurações (chave cifrada + testar conexão) e Licenças com exportação CSV', async () => {
     const root = tempRoot('mudo e2e telas ')
     roots.push(root)

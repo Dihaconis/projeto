@@ -60,6 +60,24 @@ describe('pacote', () => {
     expect(run('voar').status).toBe(2)
   }, 120_000)
 
+  it('MCP em stdio pela CLI empacotada (sem Node no PATH)', async () => {
+    const data = tempRoot('mudo pacote mcp ')
+    roots.push(data)
+    const { Client } = await import('@modelcontextprotocol/sdk/client/index.js')
+    const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js')
+    // cross-spawn (usado pelo transporte) cuida do .cmd no Windows
+    const client = new Client({ name: 'pacote', version: '1.0.0' })
+    await client.connect(new StdioClientTransport({ command: CLI, args: ['mcp'], env: envWithoutNode({ MUDO_DATA_DIR: data }), stderr: 'pipe' }))
+    try {
+      const { tools } = await client.listTools()
+      expect(tools.map((t) => t.name).sort()).toEqual(['channel_create', 'cost_estimate', 'generate_video', 'job_status', 'library_list'])
+      const ch = (await client.callTool({ name: 'channel_create', arguments: { name: 'Canal Ação', niche: 'n', language: 'pt-BR' } })) as { isError?: boolean }
+      expect(ch.isError).toBeFalsy()
+    } finally {
+      await client.close()
+    }
+  }, 120_000)
+
   it('app empacotado abre, migra o banco, sobe o runner e processa um vídeo até pedir a chave', async () => {
     // o fuse que bloqueia --inspect impede o Playwright de se acoplar ao app empacotado
     // (é o comportamento desejado no produto); por isso o teste observa o banco e os logs

@@ -3,6 +3,7 @@
  * executável do MUDO em modo Node (`ELECTRON_RUN_AS_NODE=1`), então funciona
  * sem Node instalado. Chaves vêm do app via `--mudo-secrets-helper`.
  */
+import fs from 'node:fs'
 import path from 'node:path'
 import { configuredProviders, createLogger, dataPaths, defaultDataRoot, resolveMediaBinaries } from '../core'
 import { helperSecrets } from './helper-secrets'
@@ -31,6 +32,7 @@ async function main(): Promise<number> {
     media: resolveMediaBinaries({ binDir: resources ? path.join(resources, 'bin') : undefined }),
     secrets,
     log,
+    version: (JSON.parse(fs.readFileSync(path.join(appRoot, 'package.json'), 'utf8')) as { version: string }).version,
     io: {
       out: (s) => process.stdout.write(s),
       err: (s) => process.stderr.write(s),

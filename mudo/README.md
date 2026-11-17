@@ -111,6 +111,40 @@ Códigos de saída: 0 ok · 1 erro (inclui "aguardando você") · 2 entrada inv�
 - **Linux de desenvolvimento sem chaveiro:** o Chromium cai no backend `basic_text`, que só ofusca.
   Esse backend só é aceito com `MUDO_ALLOW_BASIC_SECRET_STORE=1`. No Windows é sempre DPAPI.
 
+## MCP (seção 14)
+
+`mudo mcp` sobe um servidor MCP em stdio com cinco ferramentas:
+
+| Ferramenta | O que faz |
+| --- | --- |
+| `generate_video` | Enfileira e devolve o `jobId` na hora (a geração leva minutos). Aceita `idempotency_key`. |
+| `job_status` | Etapa, progresso, erro com código, título, caminho do MP4 e custo. |
+| `library_list` | Vídeos prontos, do mais recente ao mais antigo. |
+| `channel_create` | Cria um canal e devolve o `channelId`. |
+| `cost_estimate` | Custo estimado por etapa e provedor configurado. |
+
+- **Assíncrono:** o próprio servidor tem um runner que processa os vídeos pedidos por ele. Se o
+  cliente fechar no meio, o job volta à fila e é retomado quando o servidor (ou o app) abrir de novo.
+- **`idempotency_key`:** repetir o pedido com a mesma chave devolve o mesmo vídeo (`reused: true`),
+  sem gastar cota de novo. A mesma chave com outro pedido é recusada (`INVALID_INPUT`).
+- **Erros** voltam como resultado da ferramenta (`isError`) com `{ error: { code, message } }`:
+  `INVALID_INPUT`, `QUOTA_EXCEEDED` etc. "Aguardando você" aparece em `job_status` como
+  `needs_input`, com o motivo; resolve-se no app.
+- O stdout é só do protocolo; registros vão para `%APPDATA%/MUDO/logs`.
+
+Configuração no cliente (Windows, app instalado):
+
+```json
+{
+  "mcpServers": {
+    "mudo": {
+      "command": "C:\\Users\\<você>\\AppData\\Local\\Programs\\MUDO\\resources\\cli\\mudo.cmd",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
 ## Provedores
 
 | Etapa | Ordem padrão | Observações |

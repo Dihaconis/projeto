@@ -9,7 +9,7 @@ export const MIGRATIONS_DIR = path.resolve(__dirname, '../../migrations')
  * Fator de folga para tempos-limite: o runner Windows do CI é bem mais lento
  * em ffmpeg/processos e roda vários arquivos de teste em paralelo.
  */
-export const SLOW = Number(process.env.MUDO_TEST_SLOW ?? (process.platform === 'win32' ? 4 : 1))
+export const SLOW = Number(process.env.MUDO_TEST_SLOW ?? (process.platform === 'win32' ? 4 : 2))
 export const slow = (ms: number): number => ms * SLOW
 
 /** Remove uma pasta temporária; no Windows, arquivos ainda abertos (EBUSY) não derrubam o teste. */

@@ -1,11 +1,11 @@
 import { desc, eq } from 'drizzle-orm'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { videoRequestSchema, type VideoRequest } from '../shared/channel'
 import { DEFAULT_WPM, LANGUAGES, type Language } from '../shared/enums'
 import { getChannel, type ChannelRow } from './channels'
 import type { DbHandle } from './db'
-import { videos } from './db/schema'
+import { idempotencyKeys, videos } from './db/schema'
 import { buildScriptPrompt, scriptJsonSchema } from './prompts/script'
 import type { ProviderSource } from './providers/registry'
 import { JobQueue, type JobRow } from './queue/queue'
@@ -70,6 +70,48 @@ export function createVideoJob(h: DbHandle, req: VideoRequest): { video: VideoRo
     const job = new JobQueue(h).enqueue({ kind: 'video', videoId: video.id, payload })
     return { video, job }
   })()
+}
+
+/**
+ * Geração idempotente (MCP, seção 14): a mesma `idempotencyKey` com o mesmo
+ * pedido devolve o vídeo já criado (sem gastar cota de novo); com outro pedido,
+ * é recusada. A checagem e a criação são uma transação só.
+ */
+export function createVideoJobIdempotent(
+  h: DbHandle,
+  req: VideoRequest,
+  idempotencyKey: string,
+): { video: VideoRow; job: JobRow; reused: boolean } {
+  const r = resolve(h, req)
+  const hash = createHash('sha256')
+    .update(JSON.stringify({ channelId: r.channel.id, theme: r.theme, language: r.language, durationS: r.durationS }))
+    .digest('hex')
+  return h.sqlite.transaction(() => {
+    const prev = h.db.select().from(idempotencyKeys).where(eq(idempotencyKeys.key, idempotencyKey)).get()
+    if (prev) {
+      if (prev.requestHash !== hash) throw new JobError('INVALID_INPUT', 'esta idempotency_key já foi usada com outro pedido')
+      const video = getVideo(h, prev.videoId)
+      const job = new JobQueue(h).get(prev.jobId)
+      if (video && job) return { video, job, reused: true }
+    }
+    const { video, job } = createVideoJob(h, req)
+    h.db
+      .insert(idempotencyKeys)
+      .values({ key: idempotencyKey, requestHash: hash, videoId: video.id, jobId: job.id, createdAt: Date.now() })
+      .onConflictDoUpdate({ target: idempotencyKeys.key, set: { requestHash: hash, videoId: video.id, jobId: job.id, createdAt: Date.now() } })
+      .run()
+    return { video, job, reused: false }
+  })()
+}
+
+/** Jobs de vídeo pedidos pelo MCP que ainda não terminaram (para o servidor retomar ao reabrir). */
+export function pendingIdempotentJobIds(h: DbHandle): string[] {
+  return h.sqlite
+    .prepare(
+      `SELECT k.job_id AS id FROM idempotency_keys k JOIN jobs j ON j.id = k.job_id WHERE j.state IN ('queued', 'running')`,
+    )
+    .all()
+    .map((r) => (r as { id: string }).id)
 }
 
 export function getVideo(h: DbHandle, id: string): VideoRow | undefined {

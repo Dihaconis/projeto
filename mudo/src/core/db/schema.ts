@@ -234,3 +234,18 @@ export const cutHighlights = sqliteTable(
   },
   (t) => [index('cut_highlights_cut_idx').on(t.cutId)],
 )
+
+/**
+ * Pedidos de geração feitos pelo servidor MCP (seção 14): a mesma
+ * `idempotency_key` devolve o mesmo vídeo em vez de gerar outro.
+ */
+export const idempotencyKeys = sqliteTable('idempotency_keys', {
+  key: text('key').primaryKey(),
+  /** sha256 do pedido normalizado: a mesma chave com outro pedido é recusada. */
+  requestHash: text('request_hash').notNull(),
+  videoId: text('video_id')
+    .notNull()
+    .references(() => videos.id, { onDelete: 'cascade' }),
+  jobId: text('job_id').notNull(),
+  createdAt: integer('created_at').notNull(),
+})

@@ -29,6 +29,13 @@
       "when": 1794884050634,
       "tag": "0003_cuts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794940405315,
+      "tag": "0004_mcp_idempotency",
+      "breakpoints": true
     }
   ]
 }
