@@ -20,13 +20,14 @@ async function main(): Promise<number> {
     electronExec = (await import('electron')).default as unknown as string
   }
   const secrets = helperSecrets({ exec: electronExec, args: packaged ? [] : [appRoot] })
+  const modelsDir = resources ? path.join(resources, 'models') : path.join(appRoot, 'resources', 'models')
   const dataRoot = defaultDataRoot()
   const log = await createLogger(dataPaths(dataRoot).logs, 'cli')
 
   return runCli(process.argv.slice(2), {
     dataRoot,
     migrationsDir: resources ? path.join(resources, 'migrations') : path.join(appRoot, 'migrations'),
-    providers: (h) => configuredProviders(h, secrets),
+    providers: (h) => configuredProviders(h, secrets, { modelsDir }),
     media: resolveMediaBinaries({ binDir: resources ? path.join(resources, 'bin') : undefined }),
     secrets,
     log,

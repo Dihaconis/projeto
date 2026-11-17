@@ -116,11 +116,23 @@ describe('app Electron', () => {
         encoding: 'utf8',
       })
     const c = run('channel', 'create', '--name', 'Canal Ação', '--niche', 'história', '--lang', 'es', '--json')
-    expect(c.stderr).toBe('')
+    // no Linux o sharp avisa que o Electron pode ser incompatível (não ocorre no Windows); nada além disso
+    const stderr = c.stderr.split('\n').filter((l) => l && !l.includes('SharpElectronLinux') && !l.includes('--trace-warnings'))
+    expect(stderr).toEqual([])
     expect(c.status).toBe(0)
     const { channelId } = JSON.parse(c.stdout)
     const l = run('channel', 'list', '--json')
     expect(JSON.parse(l.stdout)[0]).toMatchObject({ channelId, name: 'Canal Ação', language: 'es' })
     expect(run('generate', '--theme', 'x', '--channel', channelId).status).toBe(2)
+
+    // sharp + CLIP (onnxruntime) carregam no runtime do Electron
+    const img = path.join(root, 'foto.png')
+    spawnSync(process.execPath, ['-e', `require('sharp')({create:{width:1920,height:1080,channels:3,background:'#3366cc'}}).png().toFile(${JSON.stringify(img)})`], { cwd: APP_DIR })
+    const imp = run('images', 'import', img, '--license', 'own', '--json')
+    expect(imp.status).toBe(0)
+    expect(JSON.parse(imp.stdout)).toMatchObject({ imported: 1 })
+    const db = openDatabase(path.join(root, 'mudo.db'))
+    expect(db.sqlite.prepare('SELECT embedding_model FROM images').get()).toEqual({ embedding_model: 'clip:Xenova/clip-vit-base-patch32:q8' })
+    db.close()
   })
 })

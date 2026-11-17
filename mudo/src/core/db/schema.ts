@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
-import { blob, index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { JOB_KINDS, JOB_STATES, STAGES } from '../../shared/enums'
+import { blob, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { IMAGE_LICENSES, JOB_KINDS, JOB_STATES, STAGES } from '../../shared/enums'
 
 const now = sql`(CAST(unixepoch('subsec') * 1000 AS INTEGER))`
 
@@ -102,20 +102,32 @@ export const images = sqliteTable(
     source: text('source').notNull(),
     sourceUrl: text('source_url'),
     author: text('author'),
-    license: text('license', {
-      enum: ['cc0', 'public_domain', 'pexels', 'pixabay', 'own', 'generated'],
-    }),
+    /** Licença em enum fechado (seção 9). Nula = quarentena: a imagem não é usada. */
+    license: text('license', { enum: IMAGE_LICENSES }),
     requiresCredit: integer('requires_credit', { mode: 'boolean' }).notNull().default(false),
     creditText: text('credit_text'),
     phash: text('phash'),
     embedding: blob('embedding', { mode: 'buffer' }),
+    /** Modelo que gerou o embedding (só se compara vetor do mesmo modelo). */
+    embeddingModel: text('embedding_model'),
+    /** Descrição/alt do provedor (base do embedding quando o modelo só lê texto). */
+    description: text('description'),
+    /** Id da foto no provedor de banco de imagens (evita baixar duas vezes). */
+    sourceId: text('source_id'),
     tags: text('tags', { mode: 'json' }),
     width: integer('width'),
     height: integer('height'),
     usedCount: integer('used_count').notNull().default(0),
     lastUsedAt: integer('last_used_at'),
+    /** Preenchido na inserção (ALTER TABLE do SQLite não aceita default por expressão). */
+    createdAt: integer('created_at').notNull().default(0),
   },
-  (t) => [index('images_phash_idx').on(t.phash), index('images_last_used_at_idx').on(t.lastUsedAt)],
+  (t) => [
+    index('images_phash_idx').on(t.phash),
+    index('images_last_used_at_idx').on(t.lastUsedAt),
+    uniqueIndex('images_source_idx').on(t.source, t.sourceId),
+    uniqueIndex('images_path_idx').on(t.path),
+  ],
 )
 
 export const scenes = sqliteTable(

@@ -84,6 +84,15 @@ export const VIDEO_SPEC = {
 export const AI_DISCLOSURE_METADATA =
   'Conteudo gerado/alterado por IA (roteiro, narracao e montagem automatizados) - MUDO'
 
+/** Licenças aceitas (seção 9). */
+export const IMAGE_LICENSES = ['cc0', 'public_domain', 'pexels', 'pixabay', 'own', 'generated'] as const
+export type ImageLicense = (typeof IMAGE_LICENSES)[number]
+/** Licenças que o usuário pode atribuir a imagens do próprio acervo. */
+export const LIBRARY_LICENSES = ['cc0', 'public_domain', 'own'] as const
+
+/** Imagens abaixo desta largura são descartadas (seção 8.4). */
+export const MIN_IMAGE_WIDTH = 1280
+
 /** Códigos de erro estáveis (usados em `last_error` e na saída --json da CLI). */
 export const ERROR_CODES = [
   'INTERNAL',
@@ -100,6 +109,7 @@ export const ERROR_CODES = [
   'DURATION_OUT_OF_RANGE',
   'FFMPEG_FAILED',
   'INVALID_INPUT',
+  'IMAGES_UNAVAILABLE',
 ] as const
 export type ErrorCode = (typeof ERROR_CODES)[number]
 

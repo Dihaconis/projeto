@@ -15,6 +15,13 @@
       "when": 1794877520001,
       "tag": "0001_cost_real",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1794880127512,
+      "tag": "0002_images_library",
+      "breakpoints": true
     }
   ]
 }

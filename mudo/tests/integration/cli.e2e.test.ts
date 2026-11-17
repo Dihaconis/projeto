@@ -110,7 +110,7 @@ describe('CLI mudo (fixtures)', () => {
     const h = openDatabase(path.join(root, 'dados', 'mudo.db'))
     const stages = h.sqlite.prepare("SELECT stage, outcome, COUNT(*) n FROM provider_log GROUP BY stage, outcome ORDER BY stage").all()
     expect(stages).toEqual([
-      { stage: 'images', outcome: 'ok', n: 1 },
+      { stage: 'images', outcome: 'ok', n: expect.any(Number) }, // 1 LLM (buscas) + 1 busca no banco por cena
       { stage: 'review', outcome: 'ok', n: 1 },
       { stage: 'script', outcome: 'ok', n: 1 },
       { stage: 'tts', outcome: 'ok', n: expect.any(Number) },
@@ -155,5 +155,26 @@ describe('CLI mudo (fixtures)', () => {
     expect((await c.run('generate', '--theme', 'Tema bom', '--channel', channelId, '--lang', 'fr')).code).toBe(EXIT.invalid)
     expect((await c.run('voar')).code).toBe(EXIT.invalid)
     expect((await c.run('status', 'nao-existe')).code).toBe(EXIT.invalid)
+  })
+
+  it('images import/list/license: licença da pasta, quarentena e licença por arquivo', async () => {
+    const { noiseImage } = await import('../helpers/fixtures')
+    const c = cli(fixtureSource([fixtureLlm()], [fixtureTts()]))
+    const dir = path.join(root, 'minhas fotos')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'praia.jpg'), await noiseImage('praia', 1920, 1080))
+    fs.writeFileSync(path.join(dir, 'pequena.jpg'), await noiseImage('peq', 640, 360))
+    const imp = await c.run('images', 'import', dir, '--license', 'own', '--json')
+    expect(imp.code).toBe(EXIT.ok)
+    expect(JSON.parse(imp.out)).toMatchObject({ imported: 1, rejected: 1, quarantined: 0 })
+
+    fs.writeFileSync(path.join(root, 'sem.jpg'), await noiseImage('sem', 1920, 1080))
+    const q = JSON.parse((await c.run('images', 'import', path.join(root, 'sem.jpg'), '--json')).out)
+    expect(q.quarantined).toBe(1)
+    const list = JSON.parse((await c.run('images', 'list', '--quarantine', '--json')).out)
+    expect(list).toHaveLength(1)
+    expect((await c.run('images', 'license', list[0].imageId, '--license', 'cc0', '--credit', 'Foto: eu')).code).toBe(EXIT.ok)
+    expect(JSON.parse((await c.run('images', 'list', '--quarantine', '--json')).out)).toHaveLength(0)
+    expect((await c.run('images', 'license', list[0].imageId, '--license', 'pexels')).code).toBe(EXIT.invalid)
   })
 })

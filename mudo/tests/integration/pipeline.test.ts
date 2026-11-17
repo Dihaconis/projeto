@@ -113,3 +113,79 @@ describe('pipeline de vídeo', () => {
     expect(jb.lastError).toMatchObject({ code: 'DURATION_OUT_OF_RANGE' })
   }, 180_000)
 })
+
+describe('imagens por cena (8.4)', () => {
+  const rowsOf = () =>
+    env.handle.sqlite
+      .prepare('SELECT s.n, s.image_query q, i.id, i.source, i.license, i.phash, i.credit_text FROM scenes s JOIN images i ON i.id = s.image_id ORDER BY s.n')
+      .all() as Array<{ n: number; q: string; id: string; source: string; license: string; phash: string; credit_text: string | null }>
+
+  it('acervo primeiro; depois banco de imagens; nunca repete (id nem pHash); créditos no .txt', async () => {
+    const { importImageFile } = await import('../../src/core/images/library')
+    const { fixtureEmbeddings, fixtureStock, noiseImage } = await import('../helpers/fixtures')
+    const fs = await import('node:fs')
+    const dir = path.join(env.paths.root, 'acervo')
+    fs.mkdirSync(dir)
+    for (const name of ['clear blue sky over a field', 'sunlight through clouds', 'ocean waves at sea']) {
+      const f = path.join(dir, `${name}.jpg`)
+      fs.writeFileSync(f, await noiseImage(name, 1920, 1080))
+      await importImageFile(env.handle, fixtureEmbeddings, f, { license: 'own' })
+    }
+    const log = { searches: [] as string[], downloads: [] as string[] }
+    const ch = createChannel(env.handle, { name: 'C', niche: 'ciência', language: 'pt-BR' })
+    const { job, video } = createVideoJob(env.handle, { channelId: ch.id, theme: 'Por que o céu é azul', durationS: 60 })
+    const r = start(fixtureSource([fixtureLlm()], [fixtureTts()], { stock: [fixtureStock('pexels', log)] }))
+    const j = await until(r.queue, job.id, ['done', 'failed', 'needs_input'])
+    expect(j.lastError).toBeNull()
+    const rows = rowsOf()
+    expect(new Set(rows.map((x) => x.id)).size).toBe(rows.length)
+    for (let a = 0; a < rows.length; a++) for (let b = a + 1; b < rows.length; b++) expect(rows[a]!.phash === rows[b]!.phash).toBe(false)
+    const lib = rows.filter((x) => x.source === 'library')
+    expect(lib).toHaveLength(3) // cada imagem do acervo usada uma vez
+    expect(rows.filter((x) => x.source === 'pexels')).toHaveLength(rows.length - 3)
+    expect(rows.every((x) => x.license)).toBe(true)
+    // só o que foi usado é baixado em tamanho cheio
+    expect(log.downloads.filter((u) => u.endsWith('/full'))).toHaveLength(rows.length - 3)
+    // largura < 1280 nunca é baixada
+    expect(log.downloads.some((u) => /-3\/(full|preview)$/.test(u))).toBe(false)
+
+    const credits = env.handle.sqlite.prepare('SELECT text FROM credits WHERE video_id = ? ORDER BY position').all(video.id) as Array<{ text: string }>
+    expect(credits.length).toBe(rows.length - 3)
+    expect(credits[0]!.text).toContain('Pexels')
+    const out = env.handle.sqlite.prepare('SELECT output_path FROM videos WHERE id = ?').get(video.id) as { output_path: string }
+    const txt = fs.readFileSync(out.output_path.replace(/\.mp4$/, '.txt'), 'utf8')
+    expect(txt).toContain(credits[0]!.text)
+  }, 120_000)
+
+  it('Pexels com chave inválida → Pixabay; sem bancos e acervo vazio → geração por IA', async () => {
+    const { fixtureStock, fixtureImageGen } = await import('../helpers/fixtures')
+    const { ProviderTechnicalError } = await import('../../src/core')
+    const broken = { ...fixtureStock('pexels'), call: async () => Promise.reject(new ProviderTechnicalError('pexels', 'pexels: chave inválida (HTTP 401)', false, 401)) }
+    const ch = createChannel(env.handle, { name: 'C', niche: 'ciência', language: 'pt-BR' })
+    const a = createVideoJob(env.handle, { channelId: ch.id, theme: 'Por que o céu é azul', durationS: 60 })
+    const r = start(fixtureSource([fixtureLlm()], [fixtureTts()], { stock: [broken, fixtureStock('pixabay')] }))
+    expect((await until(r.queue, a.job.id, ['done', 'failed', 'needs_input'])).state).toBe('done')
+    expect(new Set(rowsOf().map((x) => x.source))).toEqual(new Set(['pixabay']))
+    await r.stop()
+
+    env.handle.sqlite.exec('DELETE FROM credits; DELETE FROM scenes; DELETE FROM images;')
+    const genLog: string[] = []
+    const b = createVideoJob(env.handle, { channelId: ch.id, theme: 'Por que o céu é azul', durationS: 60 })
+    const r2 = start(fixtureSource([fixtureLlm()], [fixtureTts()], { stock: [], gen: [fixtureImageGen(genLog)] }))
+    expect((await until(r2.queue, b.job.id, ['done', 'failed', 'needs_input'])).state).toBe('done')
+    const rows = rowsOf()
+    expect(new Set(rows.map((x) => x.license))).toEqual(new Set(['generated']))
+    expect(genLog[0]).toContain('no text, no logos')
+  }, 180_000)
+
+  it('nenhuma fonte de imagem → needs_input IMAGES_UNAVAILABLE com instrução', async () => {
+    const ch = createChannel(env.handle, { name: 'C', niche: 'ciência', language: 'pt-BR' })
+    const { job } = createVideoJob(env.handle, { channelId: ch.id, theme: 'Por que o céu é azul', durationS: 60 })
+    const r = start(fixtureSource([fixtureLlm()], [fixtureTts()], { stock: [], gen: [] }))
+    const j = await until(r.queue, job.id, ['done', 'failed', 'needs_input'])
+    expect(j.state).toBe('needs_input')
+    expect(j.stage).toBe('images')
+    expect(j.lastError).toMatchObject({ code: 'IMAGES_UNAVAILABLE' })
+    expect((j.lastError as { message: string }).message).toContain('mudo images import')
+  }, 60_000)
+})

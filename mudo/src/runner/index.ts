@@ -56,7 +56,7 @@ port.on('message', (e: Electron.MessageEvent) => {
       break
     }
     case 'init':
-      void init(msg.dataDir, msg.binDir, msg.concurrency, msg.orphanAfterMs).catch((err: unknown) => {
+      void init(msg.dataDir, msg.binDir, msg.modelsDir, msg.concurrency, msg.orphanAfterMs).catch((err: unknown) => {
         send({ type: 'fatal', message: err instanceof Error ? err.message : String(err) })
         process.exit(1)
       })
@@ -81,7 +81,7 @@ port.on('message', (e: Electron.MessageEvent) => {
   }
 })
 
-async function init(dataDir: string, binDir: string | null, concurrency: number, orphanAfterMs: number): Promise<void> {
+async function init(dataDir: string, binDir: string | null, modelsDir: string, concurrency: number, orphanAfterMs: number): Promise<void> {
   if (runner) return
   const paths = dataPaths(dataDir)
   ensureDataDirs(paths)
@@ -99,7 +99,7 @@ async function init(dataDir: string, binDir: string | null, concurrency: number,
     paths,
     log,
     handlers: jobHandlers,
-    providers: configuredProviders(handle, remoteSecrets),
+    providers: configuredProviders(handle, remoteSecrets, { modelsDir }),
     media: resolveMediaBinaries({ binDir: binDir ?? undefined }),
     concurrency,
     orphanAfterMs,

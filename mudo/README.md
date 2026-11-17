@@ -2,9 +2,8 @@
 
 Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React + TypeScript + SQLite.
 
-> **Estado: Fase 2.** CLI completa gerando MP4 real: roteiro → revisão → cenas → narração → ffmpeg,
-> com uma imagem de fundo fixa por enquanto (imagens por cena chegam na Fase 3; legenda, movimento,
-> trilha, loudnorm e thumbnail na Fase 4).
+> **Estado: Fase 3.** CLI gerando MP4 real com uma imagem licenciada por cena: acervo local →
+> Pexels → Pixabay → geração por IA. Legenda, movimento, trilha, loudnorm e thumbnail chegam na Fase 4.
 
 ## Requisitos de desenvolvimento
 
@@ -12,7 +11,7 @@ Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React
 - Windows 10/11 x64 (alvo). Linux/macOS funcionam para desenvolvimento e testes.
 
 ```bash
-npm install
+npm install          # também baixa o modelo CLIP (~150 MB) com hash verificado (npm run models)
 npm run dev          # app com recarga
 npm run typecheck
 npm test             # unitários + integração (fila, provedores, pipeline, CLI gerando MP4 real com fixtures, kill -9)
@@ -115,6 +114,28 @@ Dados em `%APPDATA%/MUDO` (`mudo.db`, `work/<id>/`, `logs/`, `backups/`). `MUDO_
 
 Faixa de duração: alvos de 6–9 min usam a faixa fechada do briefing. A CLI aceita alvos curtos
 (30–359 s, ex.: 60 s) para teste, com janela de ±15%.
+
+### Imagens (Fase 3)
+
+- **Acervo local:** `mudo images import <pasta> --license own|cc0|public_domain [--credit "..."]`.
+  - Os arquivos ficam onde estão; o app guarda pHash e embedding.
+  - Imagem sem licença fica em **quarentena** e nunca é usada; `mudo images license <id> ...` define a
+    licença por arquivo.
+  - Imagens abaixo de 1280 px são recusadas.
+- **Ordem por cena:**
+  1. **Acervo:** cosseno entre o embedding da busca e o da imagem, com penalidade por uso nos últimos
+     30 dias.
+  2. **Pexels → Pixabay:** os candidatos são pontuados pela prévia, em memória. Só a escolhida é
+     baixada e guardada, com licença, autor e URL gravados na hora.
+  3. **Geração por IA** (licença `generated`).
+  4. Nada encontrado → `IMAGES_UNAVAILABLE`.
+- **Regras:**
+  - Nunca repete imagem no mesmo vídeo; a comparação é por pHash, não só por id.
+  - Recorte inteligente 16:9, pré-escalado a 4K.
+  - Créditos na ordem de aparição, gravados na tabela `credits` e no `.txt`.
+- **Embeddings:** CLIP local (`Xenova/clip-vit-base-patch32`, q8), offline, em revisão fixa. Os
+  arquivos e seus SHA-256 estão em `scripts/models.lock.json` e o app nunca baixa nada em execução.
+  Alternativa: OpenAI (só texto), com `config set embeddings.provider openai`.
 
 ### Fila e retomada
 

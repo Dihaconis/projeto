@@ -86,6 +86,7 @@ async function main(): Promise<void> {
   const runner = new RunnerHost({
     dataDir: dataRoot,
     binDir: app.isPackaged ? path.join(process.resourcesPath, 'bin') : null,
+    modelsDir: app.isPackaged ? path.join(process.resourcesPath, 'models') : path.join(app.getAppPath(), 'resources', 'models'),
     concurrency,
     orphanAfterMs,
     log,

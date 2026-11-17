@@ -7,6 +7,7 @@ import { fromRunnerSchema, toRunnerSchema, type FromRunner, type ToRunner } from
 export interface RunnerHostOptions {
   dataDir: string
   binDir: string | null
+  modelsDir: string
   concurrency: number
   orphanAfterMs: number
   log: Logger
@@ -76,6 +77,7 @@ export class RunnerHost {
       type: 'init',
       dataDir: this.o.dataDir,
       binDir: this.o.binDir,
+      modelsDir: this.o.modelsDir,
       concurrency: this.o.concurrency,
       orphanAfterMs: this.o.orphanAfterMs,
     })

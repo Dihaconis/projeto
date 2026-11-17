@@ -8,6 +8,7 @@
   "type": "commonjs",
   "dependencies": {
     "@anthropic-ai/sdk": "1.9.0",
+    "@huggingface/transformers": "4.3.2",
     "better-sqlite3": "13.2.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -19,6 +20,7 @@
     "pino-roll": "4.0.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "sharp": "0.35.5",
     "tailwind-merge": "3.7.0",
     "zod": "4.6.7"
   },
@@ -52,7 +54,9 @@
     "test:e2e": "electron-vite build && node scripts/run-e2e.mjs",
     "db:generate": "drizzle-kit generate",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
-    "cli": "node scripts/cli.mjs"
+    "cli": "node scripts/cli.mjs",
+    "models": "node scripts/fetch-models.mjs",
+    "postinstall": "node scripts/fetch-models.mjs"
   },
   "engines": {
     "node": ">=22"

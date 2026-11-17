@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 import { parseArgs, type ParseArgsOptionsConfig } from 'node:util'
 import { z } from 'zod'
 import {
@@ -25,8 +26,9 @@ import {
   type MediaBinaries,
   type ProviderSource,
 } from '../core'
+import { importFolder, importImageFile, listImages, setImageLicense, type ImportResult } from '../core/images/library'
 import { SECRET_IDS, secretIdSchema, SECRET_LABELS } from '../core/secrets'
-import { DURATION, LANGUAGES, STAGE_LABELS, TERMINAL_STATES, type JobState } from '../shared/enums'
+import { DURATION, LANGUAGES, LIBRARY_LICENSES, STAGE_LABELS, TERMINAL_STATES, type JobState } from '../shared/enums'
 import type { SecretsAdmin } from './helper-secrets'
 
 /** Códigos de saída estáveis (seção 13). */
@@ -62,6 +64,9 @@ const USAGE = `Uso:
   mudo channel create --name "..." --niche "..." --lang pt-BR [--tts elevenlabs|openai|azure] [--voice <id>] [--manual-review] [--json]
   mudo channel list [--json]
   mudo estimate --theme "..." --channel <id> [--lang ...] [--duration 420] [--json]
+  mudo images import <pasta|arquivo> [--license cc0|public_domain|own] [--author "..."] [--credit "..."] [--json]
+  mudo images list [--quarantine] [--json]
+  mudo images license <imageId> --license cc0|public_domain|own|none [--credit "..."] [--author "..."]
   mudo keys set <${SECRET_IDS.join('|')}>      (lê a chave do stdin)
   mudo keys list | mudo keys delete <id>
   mudo config set <chave> <valor>
@@ -81,6 +86,12 @@ const CONFIG_KEYS: Record<string, z.ZodType> = {
   'providers.gemini.model': z.string().min(1),
   'providers.elevenlabs.model': z.string().min(1),
   'providers.azure.region': z.string().regex(/^[a-z0-9]+$/),
+  'providers.images.order': z.string().transform((s) => s.split(',').map((x) => x.trim())).pipe(z.array(z.enum(['pexels', 'pixabay'])).min(1)),
+  'providers.images.generate': z.enum(['true', 'false']).transform((v) => v === 'true'),
+  'embeddings.provider': z.enum(['clip', 'openai']),
+  'images.localThreshold': z.coerce.number().min(-1).max(1),
+  'images.stockThreshold': z.coerce.number().min(-1).max(1),
+  'assemble.parallelSegments': z.coerce.number().int().min(1).max(8),
   'speech.wpm.pt-BR': z.coerce.number().int().min(80).max(260),
   'speech.wpm.es': z.coerce.number().int().min(80).max(260),
   'speech.wpm.en': z.coerce.number().int().min(80).max(260),
@@ -175,6 +186,8 @@ async function dispatch(argv: string[], deps: CliDeps): Promise<number> {
       throw new UsageError('use: mudo channel create|list')
     case 'estimate':
       return estimate([sub, ...rest].filter((x): x is string => x !== undefined), deps)
+    case 'images':
+      return imagesCmd(sub, rest, deps)
     case 'keys':
       return keys(sub, rest, deps)
     case 'config':
@@ -470,3 +483,89 @@ async function config(sub: string | undefined, rest: string[], deps: CliDeps): P
   }
 }
 
+async function imagesCmd(sub: string | undefined, rest: string[], deps: CliDeps): Promise<number> {
+  const licenseOpt = (v: string | undefined, allowNone: boolean) => {
+    if (v === undefined) return undefined
+    if (allowNone && v === 'none') return null
+    const r = z.enum(LIBRARY_LICENSES).safeParse(v)
+    if (!r.success) throw new JobError('INVALID_INPUT', `--license deve ser ${LIBRARY_LICENSES.join(', ')}${allowNone ? ' ou none' : ''}`)
+    return r.data
+  }
+  if (sub === 'import') {
+    const { values, positionals } = parse(rest, {
+      license: { type: 'string' },
+      author: { type: 'string' },
+      credit: { type: 'string' },
+      json: { type: 'boolean', default: false },
+    })
+    const target = positionals[0]
+    if (!target) throw new UsageError('images import precisa de uma pasta ou arquivo')
+    if (!fs.existsSync(target)) throw new JobError('INVALID_INPUT', `não encontrado: ${target}`)
+    const h = open(deps)
+    try {
+      const emb = await deps.providers(h).embeddings()
+      const opts = { license: licenseOpt(values.license, false), author: values.author ?? null, credit: values.credit ?? null }
+      const onFile = (r: ImportResult) => {
+        if (!values.json) deps.io.err(`${r.status === 'rejected' ? '✗' : r.quarantined ? '?' : '✓'} ${r.file}${r.reason ? ` — ${r.reason}` : ''}\n`)
+      }
+      const results = fs.statSync(target).isDirectory()
+        ? await importFolder(h, emb, target, opts, onFile)
+        : [await importImageFile(h, emb, target, opts)].map((r) => (onFile(r), r))
+      const summary = {
+        imported: results.filter((r) => r.status === 'imported').length,
+        updated: results.filter((r) => r.status === 'updated').length,
+        rejected: results.filter((r) => r.status === 'rejected').length,
+        quarantined: results.filter((r) => r.status !== 'rejected' && r.quarantined).length,
+        results,
+      }
+      if (values.json) deps.io.out(`${JSON.stringify(summary)}\n`)
+      else {
+        deps.io.out(`Importadas: ${summary.imported} · atualizadas: ${summary.updated} · recusadas: ${summary.rejected}\n`)
+        if (summary.quarantined > 0) {
+          deps.io.out(`${summary.quarantined} sem licença ficaram em quarentena e não serão usadas. Defina com: mudo images license <id> --license own|cc0|public_domain\n`)
+        }
+      }
+      return EXIT.ok
+    } finally {
+      h.close()
+    }
+  }
+  if (sub === 'list') {
+    const { values } = parse(rest, { quarantine: { type: 'boolean', default: false }, json: { type: 'boolean', default: false } })
+    const h = open(deps)
+    try {
+      const rows = listImages(h, { quarantine: !!values.quarantine }).map((r) => ({
+        imageId: r.id,
+        path: r.path,
+        source: r.source,
+        license: r.license,
+        author: r.author,
+        sourceUrl: r.sourceUrl,
+        creditText: r.creditText,
+        width: r.width,
+        height: r.height,
+        usedCount: r.usedCount,
+      }))
+      if (values.json) deps.io.out(`${JSON.stringify(rows)}\n`)
+      else if (rows.length === 0) deps.io.out(values.quarantine ? 'Nenhuma imagem em quarentena.\n' : 'Acervo vazio. Importe com: mudo images import <pasta> --license own\n')
+      else for (const r of rows) deps.io.out(`${r.imageId}  ${(r.license ?? 'QUARENTENA').padEnd(13)} ${r.width}x${r.height}  ${r.path}\n`)
+      return EXIT.ok
+    } finally {
+      h.close()
+    }
+  }
+  if (sub === 'license') {
+    const { values, positionals } = parse(rest, { license: { type: 'string' }, credit: { type: 'string' }, author: { type: 'string' } })
+    const id = positionals[0]
+    if (!id || values.license === undefined) throw new UsageError('images license precisa do imageId e de --license')
+    const h = open(deps)
+    try {
+      const row = setImageLicense(h, id, licenseOpt(values.license, true) ?? null, values.credit, values.author)
+      deps.io.out(`${row.id}: licença ${row.license ?? 'nenhuma (quarentena)'}${row.creditText ? ` · crédito "${row.creditText}"` : ''}\n`)
+      return EXIT.ok
+    } finally {
+      h.close()
+    }
+  }
+  throw new UsageError('use: mudo images import|list|license')
+}

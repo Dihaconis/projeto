@@ -3,8 +3,10 @@
  * respostas gravadas em tests/fixtures/ no formato real dos provedores, sem
  * rede. Nunca são importados pelo código do produto.
  */
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import sharp from 'sharp'
 import {
   ProviderRefusalError,
   ProviderTechnicalError,
@@ -16,12 +18,110 @@ import {
   type TtsOutput,
   type TtsProvider,
 } from '../../src/core'
+import { normalize, type EmbeddingProvider } from '../../src/core/images/embeddings'
+import type { ImageGenProvider, StockCandidate, StockProvider } from '../../src/core/images/stock'
 
 const FIX = path.resolve(__dirname, '../fixtures')
 const read = (rel: string) => fs.readFileSync(path.join(FIX, rel), 'utf8')
 
+/**
+ * Embeddings de FIXTURE: saco de palavras com hash em 128 dimensões. Só lê
+ * texto (como o modelo de texto da OpenAI), então imagens são representadas
+ * pela descrição/nome do arquivo. Determinístico e instantâneo.
+ */
+export const fixtureEmbeddings: EmbeddingProvider = {
+  model: 'fixture:bow-128',
+  async embedTexts(texts) {
+    return texts.map((t) => {
+      const v = new Float32Array(128)
+      for (const w of t.toLowerCase().split(/[^a-z0-9]+/).filter((x) => x.length > 2)) {
+        const h = createHash('md5').update(w).digest()
+        v[h[0]! % 128]! += 1
+      }
+      v[127] = (v[127] ?? 0) + 0.05 // evita vetor nulo
+      return normalize(v)
+    })
+  },
+}
+
+/** Imagem de ruído determinística (pHash distinto por semente). */
+export async function noiseImage(seed: string, width: number, height: number): Promise<Buffer> {
+  const w = 32
+  const h = 18
+  const raw = Buffer.alloc(w * h * 3)
+  let x = createHash('sha256').update(seed).digest().readUInt32LE(0) || 1
+  for (let i = 0; i < raw.length; i++) {
+    x ^= x << 13
+    x ^= x >>> 17
+    x ^= x << 5
+    raw[i] = (x >>> 0) & 0xff
+  }
+  return sharp(raw, { raw: { width: w, height: h, channels: 3 } }).resize(width, height, { kernel: 'nearest' }).jpeg({ quality: 85 }).toBuffer()
+}
+
+/** Banco de imagens de FIXTURE: candidatos com descrição = busca; imagens geradas localmente. */
+export function fixtureStock(id: 'pexels' | 'pixabay' = 'pexels', log?: { searches: string[]; downloads: string[] }): StockProvider {
+  let counter = 0
+  return {
+    id,
+    license: id,
+    requiresCredit: id === 'pexels',
+    caps: { languages: ['en'] },
+    estimateCost: () => 0,
+    credit: (c: StockCandidate) => `Foto de ${c.author} no ${id === 'pexels' ? 'Pexels' : 'Pixabay'} (${c.pageUrl})`,
+    async download(url) {
+      log?.downloads.push(url)
+      const [, sid, kind] = /^fixture:\/\/([^/]+)\/(preview|full)$/.exec(url) ?? []
+      if (!sid) throw new Error(`url de fixture inválida: ${url}`)
+      return kind === 'full' ? noiseImage(sid, 1920, 1080) : noiseImage(sid, 400, 225)
+    },
+    async call(q) {
+      log?.searches.push(q.query)
+      const base = counter++
+      return {
+        model: 'fixture',
+        costCents: 0,
+        candidates: Array.from({ length: 4 }, (_, i) => {
+          const sid = `${id}-${base}-${i}`
+          return {
+            sourceId: sid,
+            pageUrl: `https://example.invalid/${id}/${sid}`,
+            previewUrl: `fixture://${sid}/preview`,
+            downloadUrl: `fixture://${sid}/full`,
+            width: i === 3 ? 1000 : 1920, // uma estreita demais, deve ser ignorada
+            height: i === 3 ? 600 : 1080,
+            author: `Autor ${sid}`,
+            authorUrl: null,
+            description: q.query,
+          }
+        }),
+      }
+    },
+  }
+}
+
+/** Gerador de imagens de FIXTURE (último recurso). */
+export function fixtureImageGen(log?: string[]): ImageGenProvider {
+  let n = 0
+  return {
+    id: 'fixture-gen',
+    caps: { languages: ['en'] },
+    estimateCost: () => 5,
+    async call(i) {
+      log?.push(i.prompt)
+      return { image: await noiseImage(`gen-${n++}-${i.prompt}`, 1536, 1024), model: 'fixture', costCents: 5 }
+    },
+  }
+}
+
 /** Nenhum provedor configurado (testes de fila que não chamam modelos). */
-export const noProviders: ProviderSource = { llm: async () => [], tts: async () => [] }
+export const noProviders: ProviderSource = {
+  llm: async () => [],
+  tts: async () => [],
+  stock: async () => [],
+  imageGen: async () => [],
+  embeddings: async () => fixtureEmbeddings,
+}
 
 export interface FixtureLog {
   calls: Array<{ provider: string; kind: 'script' | 'review' | 'scenes' | 'tts'; at: number }>
@@ -126,6 +226,17 @@ export function refusingLlm(id = 'refusing-llm', log?: FixtureLog): LlmProvider 
   }
 }
 
-export function fixtureSource(llm: LlmProvider[], tts: TtsProvider[]): ProviderSource {
-  return { llm: async () => llm, tts: async () => tts }
+export function fixtureSource(
+  llm: LlmProvider[],
+  tts: TtsProvider[],
+  images: { stock?: StockProvider[]; gen?: ImageGenProvider[]; embeddings?: EmbeddingProvider } = {},
+): ProviderSource {
+  const stock = images.stock ?? [fixtureStock('pexels')]
+  return {
+    llm: async () => llm,
+    tts: async () => tts,
+    stock: async () => stock,
+    imageGen: async () => images.gen ?? [],
+    embeddings: async () => images.embeddings ?? fixtureEmbeddings,
+  }
 }

@@ -7,6 +7,7 @@ export const toRunnerSchema = z.discriminatedUnion('type', [
     type: z.literal('init'),
     dataDir: z.string(),
     binDir: z.string().nullable(),
+    modelsDir: z.string(),
     concurrency: z.number().int().min(1).max(8),
     orphanAfterMs: z.number().int().min(500),
   }),

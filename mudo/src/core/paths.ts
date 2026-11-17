@@ -9,6 +9,12 @@ export interface DataPaths {
   logs: string
   backups: string
   config: string
+  /** Imagens baixadas de bancos de imagem que foram de fato usadas. */
+  stock: string
+  /** Imagens geradas por IA. */
+  generated: string
+  /** Quadros 4K 16:9 já recortados, reaproveitados entre vídeos. */
+  frames: string
 }
 
 export function dataPaths(root: string): DataPaths {
@@ -19,6 +25,9 @@ export function dataPaths(root: string): DataPaths {
     logs: path.join(root, 'logs'),
     backups: path.join(root, 'backups'),
     config: path.join(root, 'config.json'),
+    stock: path.join(root, 'images', 'stock'),
+    generated: path.join(root, 'images', 'generated'),
+    frames: path.join(root, 'images', 'frames'),
   }
 }
 
@@ -36,7 +45,7 @@ export function defaultDataRoot(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function ensureDataDirs(p: DataPaths): void {
-  for (const dir of [p.root, p.work, p.logs, p.backups]) fs.mkdirSync(dir, { recursive: true })
+  for (const dir of [p.root, p.work, p.logs, p.backups, p.stock, p.generated, p.frames]) fs.mkdirSync(dir, { recursive: true })
 }
 
 /** Pasta de trabalho de um job: artefatos persistentes + `tmp/` descartável. */

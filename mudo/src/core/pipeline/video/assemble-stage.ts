@@ -5,6 +5,7 @@ import path from 'node:path'
 import { z } from 'zod'
 import { AI_DISCLOSURE_METADATA, VIDEO_SPEC, type Language } from '../../../shared/enums'
 import { credits, images } from '../../db/schema'
+import { preparedFrame } from '../../images/library'
 import { concatListLine, runFfmpeg } from '../../media/ffmpeg'
 import { writeFileAtomic } from '../../paths'
 import { JobError } from '../../queue/errors'
@@ -65,37 +66,48 @@ export async function assembleStage(st: VideoJobState): Promise<void> {
     const totalFrames = frames.reduce((a, b) => a + b, 0)
     fs.mkdirSync(st.files.segmentsDir, { recursive: true })
     fs.mkdirSync(ctx.tmpDir, { recursive: true })
-    const imagePaths = new Map(
-      ctx.db.db
-        .select({ id: images.id, path: images.path })
-        .from(images)
-        .where(inArray(images.id, rows.map((r) => r.imageId!)))
-        .all()
-        .map((r) => [r.id, r.path]),
-    )
+    // quadro 4K 16:9 com recorte inteligente, cacheado por imagem
+    const imagePaths = new Map<string, string>()
+    for (const img of ctx.db.db
+      .select({ id: images.id, path: images.path })
+      .from(images)
+      .where(inArray(images.id, [...new Set(rows.map((r) => r.imageId!))]))
+      .all()) {
+      if (!fs.existsSync(img.path)) throw new JobError('INTERNAL', `arquivo de imagem sumiu: ${img.path}`)
+      imagePaths.set(img.id, await preparedFrame(ctx.paths, img))
+    }
 
-    // 70% do progresso nos segmentos, 30% no final
+    // 70% do progresso nos segmentos, 30% no final. O zoompan é monothread,
+    // então alguns segmentos rodam em paralelo (cada um com checkpoint próprio).
+    const partial = new Map<number, number>()
     let framesDone = 0
+    const report = () => {
+      let inFlight = 0
+      for (const v of partial.values()) inFlight += v
+      ctx.stageProgress(((framesDone + inFlight) / totalFrames) * 0.7)
+    }
+    const todo: number[] = []
     for (let i = 0; i < rows.length; i++) {
+      const scene = rows[i]!
+      if (st.cp.segments[String(scene.n)] && fs.existsSync(path.join(st.files.segmentsDir, `${pad(scene.n)}.mp4`))) framesDone += frames[i]!
+      else todo.push(i)
+    }
+    report()
+    const renderOne = async (i: number) => {
       const scene = rows[i]!
       const n = frames[i]!
       const seg = path.join(st.files.segmentsDir, `${pad(scene.n)}.mp4`)
-      if (st.cp.segments[String(scene.n)] && fs.existsSync(seg)) {
-        framesDone += n
-        ctx.stageProgress((framesDone / totalFrames) * 0.7)
-        continue
-      }
       const img = imagePaths.get(scene.imageId!)
       if (!img || !fs.existsSync(img)) throw new JobError('INTERNAL', `imagem da cena ${scene.n} não encontrada`)
       const tmp = path.join(ctx.tmpDir, `seg-${pad(scene.n)}.mp4`)
-      const base = framesDone
       await runFfmpeg(
         ctx.spawn,
         ctx.media,
         [
-          '-loop', '1', '-framerate', String(VIDEO_SPEC.fps), '-i', img,
+          // a imagem 4K é decodificada uma vez; o zoompan gera os N quadros
+          '-i', img,
           '-frames:v', String(n),
-          '-vf', `scale=${VIDEO_SPEC.width}:${VIDEO_SPEC.height}:force_original_aspect_ratio=increase,crop=${VIDEO_SPEC.width}:${VIDEO_SPEC.height},setsar=1,format=yuv420p`,
+          '-vf', `zoompan=z=1:d=${n}:s=${VIDEO_SPEC.width}x${VIDEO_SPEC.height}:fps=${VIDEO_SPEC.fps},setsar=1,format=yuv420p`,
           '-r', String(VIDEO_SPEC.fps),
           '-c:v', 'libx264', '-preset', VIDEO_SPEC.preset, '-crf', String(VIDEO_SPEC.crf), '-tune', 'stillimage',
           '-an', tmp,
@@ -103,14 +115,26 @@ export async function assembleStage(st: VideoJobState): Promise<void> {
         {
           what: `renderizar a cena ${scene.n}`,
           expectedS: n / VIDEO_SPEC.fps,
-          onProgress: (f) => ctx.stageProgress(((base + f * n) / totalFrames) * 0.7),
+          onProgress: (f) => {
+            partial.set(i, f * n)
+            report()
+          },
         },
       )
       fs.renameSync(tmp, seg)
+      partial.delete(i)
       st.cp.segments[String(scene.n)] = true
       st.save()
       framesDone += n
+      report()
     }
+    const parallel = getSetting(ctx.db, 'assemble.parallelSegments', z.number().int().min(1).max(8), 3)
+    let next = 0
+    await Promise.all(
+      Array.from({ length: Math.min(parallel, todo.length) }, async () => {
+        while (next < todo.length) await renderOne(todo[next++]!)
+      }),
+    )
 
     // concat + áudio AAC + metadado de IA
     const list = path.join(ctx.tmpDir, 'segments.txt')
@@ -159,7 +183,7 @@ const TXT_LABELS: Record<Language, { tags: string; credits: string; narration: s
     credits: 'Créditos',
     narration: 'Narração: voz sintética',
     images: 'Imagens',
-    ownImages: 'Imagens: produzidas para este vídeo',
+    ownImages: 'Imagens: acervo próprio ou de licença livre (sem crédito exigido)',
     ai: 'Este vídeo contém conteúdo gerado ou alterado por IA (roteiro, narração e montagem).',
   },
   es: {
@@ -167,7 +191,7 @@ const TXT_LABELS: Record<Language, { tags: string; credits: string; narration: s
     credits: 'Créditos',
     narration: 'Narración: voz sintética',
     images: 'Imágenes',
-    ownImages: 'Imágenes: producidas para este video',
+    ownImages: 'Imágenes: acervo propio o de licencia libre (sin crédito exigido)',
     ai: 'Este video contiene contenido generado o alterado por IA (guion, narración y montaje).',
   },
   en: {
@@ -175,7 +199,7 @@ const TXT_LABELS: Record<Language, { tags: string; credits: string; narration: s
     credits: 'Credits',
     narration: 'Narration: synthetic voice',
     images: 'Images',
-    ownImages: 'Images: produced for this video',
+    ownImages: 'Images: own library or free license (no credit required)',
     ai: 'This video contains AI-generated or AI-altered content (script, narration and editing).',
   },
 }
