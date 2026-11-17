@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { dataPaths, migrateDatabase, openDatabase, pendingMigrationCount } from '../../src/core'
-import { MIGRATIONS_DIR, tempRoot } from '../helpers/env'
+import { MIGRATIONS_DIR, copyDir, tempRoot } from '../helpers/env'
 
 const roots: string[] = []
 afterEach(() => {
@@ -45,7 +45,7 @@ describe('banco e migrações', () => {
 
     // migrações = reais + uma nova
     const mig = path.join(root, 'migrations')
-    fs.cpSync(MIGRATIONS_DIR, mig, { recursive: true })
+    copyDir(MIGRATIONS_DIR, mig)
     fs.writeFileSync(path.join(mig, '0099_extra.sql'), 'CREATE TABLE `extra_teste` (`id` integer PRIMARY KEY);')
     const journalFile = path.join(mig, 'meta', '_journal.json')
     const journal = JSON.parse(fs.readFileSync(journalFile, 'utf8'))
@@ -68,7 +68,7 @@ describe('banco e migrações', () => {
     roots.push(root)
     const p = dataPaths(root)
     const only0 = path.join(root, 'mig0')
-    fs.cpSync(MIGRATIONS_DIR, only0, { recursive: true })
+    copyDir(MIGRATIONS_DIR, only0)
     const jf = path.join(only0, 'meta', '_journal.json')
     const j = JSON.parse(fs.readFileSync(jf, 'utf8'))
     j.entries = j.entries.slice(0, 1)

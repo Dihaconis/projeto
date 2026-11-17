@@ -4,7 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { JobQueue } from '../../src/core'
 import { SELFTEST_STEPS } from '../helpers/selftest-handler'
-import { isAlive, makeEnv, waitFor, type TestEnv } from '../helpers/env'
+import { isAlive, makeEnv, waitFor, type TestEnv, slow } from '../helpers/env'
 
 const CHILD = path.resolve(__dirname, '../helpers/runner-child.ts')
 const children: ChildProcess[] = []
@@ -39,7 +39,7 @@ describe('sobrevive a matar o processo (kill -9) durante a montagem', () => {
       const cp = j?.checkpoint as { steps?: Record<string, true> } | undefined
       const p = q.listProcs(job.id)[0]
       return j?.stage === 'assemble' && cp?.steps?.['assemble:1'] && p ? p : null
-    }, 25_000)
+    }, slow(25_000))
     first.kill('SIGKILL')
     await waitFor(() => first.exitCode !== null || first.signalCode !== null)
 
@@ -66,5 +66,5 @@ describe('sobrevive a matar o processo (kill -9) durante a montagem', () => {
     for (let n = 1; n <= SELFTEST_STEPS.assemble; n++) {
       expect(fs.existsSync(path.join(env.paths.work, job.id, 'assemble', `${n}.json`))).toBe(true)
     }
-  }, 60_000)
+  }, slow(60_000))
 })

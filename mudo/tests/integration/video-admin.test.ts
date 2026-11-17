@@ -17,7 +17,7 @@ import {
   videoMediaPath,
   type ProviderSource,
 } from '../../src/core'
-import { makeEnv, waitFor, type TestEnv } from '../helpers/env'
+import { makeEnv, waitFor, type TestEnv, slow } from '../helpers/env'
 import { fixtureLlm, fixtureSource, fixtureTts, type FixtureLog } from '../helpers/fixtures'
 
 let env: TestEnv
@@ -38,7 +38,7 @@ async function runUntil(providers: ProviderSource, jobId: string) {
   const j = await waitFor(() => {
     const x = r.queue.get(jobId)
     return x && ['done', 'failed', 'needs_input'].includes(x.state) ? x : null
-  }, 180_000)
+  }, slow(180_000))
   await r.stop()
   runners.splice(runners.indexOf(r), 1)
   return j
@@ -92,7 +92,7 @@ describe('telas Meus Vídeos/Biblioteca (core)', () => {
     expect(fs.existsSync(path.join(env.paths.work, video.id))).toBe(false)
     expect(listVideoViews(env.handle)).toHaveLength(0)
     expect(env.handle.sqlite.prepare('SELECT COUNT(*) n FROM scenes').get()).toEqual({ n: 0 })
-  }, 300_000)
+  }, slow(300_000))
 
   it('não apaga vídeo em geração', () => {
     const ch = createChannel(env.handle, { name: 'Canal', niche: 'ciência', language: 'pt-BR' })

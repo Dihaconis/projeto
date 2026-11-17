@@ -8,7 +8,7 @@ import { MOTIONS, pickMotions, zoompanFilter } from '../../src/core/media/motion
 import { mixAndNormalize, musicExpression } from '../../src/core/media/music'
 import { SUB_MAX_LINE_CHARS, assColor, buildAss, buildCards } from '../../src/core/media/subtitles'
 import { parseSilences } from '../../src/core/pipeline/video/tts-stage'
-import { tempRoot } from '../helpers/env'
+import { tempRoot, slow } from '../helpers/env'
 
 const roots: string[] = []
 afterEach(() => roots.splice(0).forEach((r) => fs.rmSync(r, { recursive: true, force: true })))
@@ -98,7 +98,7 @@ describe('alinhamento de palavras (8.5)', () => {
     expect(Math.abs(americans.startMs - 1750)).toBeLessThan(300)
     const last = words.at(-1)!
     expect(last.endMs).toBeGreaterThan(9500)
-  }, 120_000)
+  }, slow(120_000))
 
   it('silêncio nas pontas lido do silencedetect', () => {
     const lines = ['[silencedetect] silence_start: 0', '[silencedetect] silence_end: 0.25 | silence_duration: 0.25', '[silencedetect] silence_start: 3.85']
@@ -124,5 +124,5 @@ describe('trilha (8.6)', () => {
     const alone = rms(5.5, 6.5) // antes do fade final
     expect(alone - underVoice).toBeGreaterThan(6)
     expect(musicExpression('calm')).toContain('sin(2*PI*')
-  }, 60_000)
+  }, slow(60_000))
 })

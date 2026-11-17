@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AI_DISCLOSURE_METADATA } from '../../src/shared/enums'
 import { EXIT, runCli, type CliDeps } from '../../src/cli/run'
 import { openDatabase, resolveMediaBinaries, type ProviderSource } from '../../src/core'
-import { MIGRATIONS_DIR, tempRoot } from '../helpers/env'
+import { MIGRATIONS_DIR, rmTemp, tempRoot, slow } from '../helpers/env'
 import { downLlm, fixtureLlm, fixtureSource, fixtureTts, refusingLlm, type FixtureLog } from '../helpers/fixtures'
 
 let root: string
@@ -20,7 +20,7 @@ beforeEach(() => {
   root = tempRoot('mudo cli ação ')
   outDir = path.join(root, 'saída de vídeos')
 })
-afterEach(() => fs.rmSync(root, { recursive: true, force: true }))
+afterEach(() => rmTemp(root))
 
 function cli(providers: ProviderSource) {
   const out: string[] = []
@@ -122,7 +122,7 @@ describe('CLI mudo (fixtures)', () => {
     const timings = JSON.parse((h.sqlite.prepare('SELECT stage_timings FROM jobs').get() as { stage_timings: string }).stage_timings)
     expect(Object.keys(timings).sort()).toEqual(['assemble', 'images', 'review', 'script', 'tts'])
     h.close()
-  }, 120_000)
+  }, slow(120_000))
 
   it('provedor fora do ar → fallback e o vídeo termina com o próximo (critério 5)', async () => {
     const log: FixtureLog = { calls: [] }
@@ -133,7 +133,7 @@ describe('CLI mudo (fixtures)', () => {
     const down = log.calls.filter((x) => x.provider === 'down-llm')
     expect(down.length).toBe(9) // 3 tentativas × (roteiro, revisão, cenas)
     expect(log.calls.filter((x) => x.provider === 'fixture-llm').length).toBe(3)
-  }, 120_000)
+  }, slow(120_000))
 
   it('recusa de política → needs_input com a mensagem, sem trocar de provedor (critério 6)', async () => {
     const log: FixtureLog = { calls: [] }
@@ -145,7 +145,7 @@ describe('CLI mudo (fixtures)', () => {
     expect(s.error.code).toBe('PROVIDER_REFUSAL')
     expect(s.error.message).toContain('política de uso')
     expect(log.calls.map((x) => x.provider)).toEqual(['refusing-llm'])
-  }, 60_000)
+  }, slow(60_000))
 
   it('entrada inválida → código 2; comando desconhecido → 2', async () => {
     const { c, channelId } = await setup(fixtureSource([fixtureLlm()], [fixtureTts()]))

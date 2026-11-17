@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { Runner, createChannel, createVideoJob, jobHandlers, nullLogger, resolveMediaBinaries, setSetting, type JobRow } from '../../src/core'
 import { globalWords } from '../../src/core/pipeline/video/assemble-stage'
 import { loadVideoJob } from '../../src/core/pipeline/video/state'
-import { makeEnv, waitFor, type TestEnv } from '../helpers/env'
+import { makeEnv, waitFor, type TestEnv, slow } from '../helpers/env'
 import { fixtureLlm, fixtureSource, fixtureStock, fixtureTts } from '../helpers/fixtures'
 
 const bins = resolveMediaBinaries()
@@ -37,10 +37,10 @@ beforeAll(async () => {
   job = await waitFor(() => {
     const j = r.queue.get(created.job.id)
     return j && ['done', 'failed', 'needs_input'].includes(j.state) ? j : null
-  }, 300_000)
+  }, slow(300_000))
   await r.stop()
   video = env.handle.sqlite.prepare('SELECT id, output_path, thumb_path, actual_duration_s FROM videos').get() as typeof video
-}, 320_000)
+}, slow(320_000))
 afterAll(() => env.cleanup())
 
 function ff(args: string[]): string {

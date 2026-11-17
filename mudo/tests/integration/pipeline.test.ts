@@ -11,7 +11,7 @@ import {
   setSetting,
   type ProviderSource,
 } from '../../src/core'
-import { makeEnv, waitFor, type TestEnv } from '../helpers/env'
+import { makeEnv, waitFor, type TestEnv, slow } from '../helpers/env'
 import { fixtureLlm, fixtureSource, fixtureTts, type FixtureLog } from '../helpers/fixtures'
 
 let env: TestEnv
@@ -45,7 +45,7 @@ const until = (q: JobQueue, id: string, states: string[]) =>
   waitFor(() => {
     const j = q.get(id)
     return j && states.includes(j.state) ? j : null
-  }, 90_000)
+  }, slow(90_000))
 
 describe('pipeline de vídeo', () => {
   it('revisão reprova 2× → needs_input com as issues; retomar libera e termina', async () => {
@@ -65,7 +65,7 @@ describe('pipeline de vídeo', () => {
     expect(done.state).toBe('done')
     expect(log.calls.filter((c) => c.kind === 'review')).toHaveLength(2) // decisão humana, sem nova revisão
     expect(log.calls.filter((c) => c.kind === 'script')).toHaveLength(1)
-  }, 120_000)
+  }, slow(120_000))
 
   it('canal com revisão manual para em needs_input mesmo aprovado', async () => {
     const ch = createChannel(env.handle, { name: 'C', niche: 'ciência', language: 'pt-BR', stylePreset: { manualReview: true } })
@@ -73,7 +73,7 @@ describe('pipeline de vídeo', () => {
     const r = start(fixtureSource([fixtureLlm()], [fixtureTts()]))
     const j = await until(r.queue, job.id, ['needs_input', 'failed', 'done'])
     expect(j.lastError).toMatchObject({ code: 'REVIEW_MANUAL' })
-  }, 60_000)
+  }, slow(60_000))
 
   it('imagem que exige crédito sem texto de crédito → LICENSE_MISSING antes da montagem (critério 4)', async () => {
     const ch = createChannel(env.handle, { name: 'C', niche: 'ciência', language: 'pt-BR' })
@@ -92,7 +92,7 @@ describe('pipeline de vídeo', () => {
     expect(j.stage).toBe('assemble')
     expect(j.lastError).toMatchObject({ code: 'LICENSE_MISSING' })
     expect(env.handle.sqlite.prepare('SELECT output_path FROM videos').get()).toEqual({ output_path: null })
-  }, 90_000)
+  }, slow(90_000))
 
   it('narração um pouco longa → atempo dentro de ±8%; longa demais → needs_input', async () => {
     const ch = createChannel(env.handle, { name: 'C', niche: 'ciência', language: 'pt-BR' })
@@ -111,7 +111,7 @@ describe('pipeline de vídeo', () => {
     const jb = await until(r2.queue, b.job.id, ['needs_input', 'failed', 'done'])
     expect(jb.state).toBe('needs_input')
     expect(jb.lastError).toMatchObject({ code: 'DURATION_OUT_OF_RANGE' })
-  }, 180_000)
+  }, slow(180_000))
 })
 
 describe('imagens por cena (8.4)', () => {
@@ -155,7 +155,7 @@ describe('imagens por cena (8.4)', () => {
     const out = env.handle.sqlite.prepare('SELECT output_path FROM videos WHERE id = ?').get(video.id) as { output_path: string }
     const txt = fs.readFileSync(out.output_path.replace(/\.mp4$/, '.txt'), 'utf8')
     expect(txt).toContain(credits[0]!.text)
-  }, 120_000)
+  }, slow(120_000))
 
   it('Pexels com chave inválida → Pixabay; sem bancos e acervo vazio → geração por IA', async () => {
     const { fixtureStock, fixtureImageGen } = await import('../helpers/fixtures')
@@ -176,7 +176,7 @@ describe('imagens por cena (8.4)', () => {
     const rows = rowsOf()
     expect(new Set(rows.map((x) => x.license))).toEqual(new Set(['generated']))
     expect(genLog[0]).toContain('no text, no logos')
-  }, 180_000)
+  }, slow(180_000))
 
   it('nenhuma fonte de imagem → needs_input IMAGES_UNAVAILABLE com instrução', async () => {
     const ch = createChannel(env.handle, { name: 'C', niche: 'ciência', language: 'pt-BR' })
@@ -187,5 +187,5 @@ describe('imagens por cena (8.4)', () => {
     expect(j.stage).toBe('images')
     expect(j.lastError).toMatchObject({ code: 'IMAGES_UNAVAILABLE' })
     expect((j.lastError as { message: string }).message).toContain('mudo images import')
-  }, 60_000)
+  }, slow(60_000))
 })

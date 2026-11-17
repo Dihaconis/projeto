@@ -275,6 +275,8 @@ export class JobQueue {
   }
 
   removeProc(jobId: string, pid: number): void {
+    // o filho pode sair depois de o banco ter sido fechado (encerramento do app)
+    if (!this.h.sqlite.open) return
     this.h.db.delete(jobProcs).where(and(eq(jobProcs.jobId, jobId), eq(jobProcs.pid, pid))).run()
   }
 

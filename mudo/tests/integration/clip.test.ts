@@ -7,6 +7,7 @@ import path from 'node:path'
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import { clipLocal, cosine } from '../../src/core/images/embeddings'
+import { slow } from '../helpers/env'
 
 const MODELS = path.resolve(__dirname, '../../resources/models')
 
@@ -21,5 +22,5 @@ describe('CLIP local (offline)', () => {
     expect(cosine(blue!, blueImg)).toBeGreaterThan(cosine(red!, blueImg))
     expect(cosine(red!, redImg)).toBeGreaterThan(cosine(cat!, redImg))
     expect(clip.model).toContain('clip-vit-base-patch32')
-  }, 60_000)
+  }, slow(60_000))
 })

@@ -26,7 +26,7 @@ import {
   type ProviderSource,
 } from '../../src/core'
 import { sentencesFromWords } from '../../src/core/pipeline/cut'
-import { makeEnv, tempRoot, waitFor, type TestEnv } from '../helpers/env'
+import { makeEnv, tempRoot, waitFor, type TestEnv, slow } from '../helpers/env'
 import { fixtureLlm, fixtureSource, fixtureTts } from '../helpers/fixtures'
 
 const bins = resolveMediaBinaries()
@@ -61,7 +61,7 @@ async function run(jobId: string) {
   const j = await waitFor(() => {
     const x = r.queue.get(jobId)
     return x && ['done', 'failed', 'needs_input'].includes(x.state) ? x : null
-  }, 240_000)
+  }, slow(240_000))
   await r.stop()
   return j
 }
@@ -116,7 +116,7 @@ describe('Cortes (Beta)', () => {
     for (let i = 0; i < 4; i++) consumeQuota(env.handle, 'cut')
     const other = getCutDetail(env.handle, cut.id).highlights.find((h) => h.id !== best.id)
     if (other) expect(() => enqueueCutExport(env.handle, other.id)).toThrow(/esgotada/)
-  }, 400_000)
+  }, slow(400_000))
 
   it('link: baixa com yt-dlp (servidor local) e segue a análise', async () => {
     const server = http.createServer((req, res) => {
@@ -137,7 +137,7 @@ describe('Cortes (Beta)', () => {
     } finally {
       server.close()
     }
-  }, 400_000)
+  }, slow(400_000))
 
   it('frases para o analista: pontuação, pausa longa e limite de 25 s', () => {
     const w = (word: string, s: number, e: number) => ({ word, startMs: s, endMs: e })

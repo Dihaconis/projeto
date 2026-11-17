@@ -71,7 +71,7 @@ export const cutHandler: JobHandler = async (ctx) => {
       const r = await ctx.spawn(
         ctx.media.ytdlp,
         [
-          '--no-playlist', '--newline', '--no-colors',
+          '--no-playlist', '--newline', '--no-colors', '--encoding', 'utf-8',
           '-f', 'bv*[height<=1080]+ba/b[height<=1080]/b',
           '--merge-output-format', 'mp4',
           '--ffmpeg-location', path.dirname(ctx.media.ffmpeg),
@@ -81,6 +81,8 @@ export const cutHandler: JobHandler = async (ctx) => {
           cut.source,
         ],
         {
+          // no Windows o Python escreve na página de código do console e estraga acentos do caminho
+          env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
           onStdoutLine: (l) => {
             const pct = /\[download\]\s+([\d.]+)%/.exec(l)
             if (pct) ctx.stageProgress(Number(pct[1]) / 100)
@@ -89,6 +91,11 @@ export const cutHandler: JobHandler = async (ctx) => {
           },
         },
       )
+      if (r.code === 0 && (!file || !fs.existsSync(file))) {
+        // o caminho impresso pode vir com outra codificação; o nome do arquivo é nosso (source.<ext>)
+        const found = fs.readdirSync(ctx.workDir).find((n) => /^source\.(mp4|mkv|webm|mov|m4v)$/i.test(n))
+        if (found) file = path.join(ctx.workDir, found)
+      }
       if (r.code !== 0 || !file || !fs.existsSync(file)) {
         throw new JobError('INVALID_INPUT', `Não foi possível baixar o vídeo do link (yt-dlp código ${r.code}). Confira o link ou use um arquivo local.`, false, {
           stderr: r.stderrTail.slice(-800),

@@ -7,7 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { JobQueue, createChannel, createVideoJob, setSetting } from '../../src/core'
-import { makeEnv, waitFor, type TestEnv } from '../helpers/env'
+import { makeEnv, waitFor, type TestEnv, slow } from '../helpers/env'
 
 const CHILD = path.resolve(__dirname, '../helpers/runner-child.ts')
 const children: ChildProcess[] = []
@@ -68,5 +68,5 @@ describe('vídeo: kill -9 durante a montagem', () => {
     }
     const v = env.handle.sqlite.prepare('SELECT output_path FROM videos WHERE id = ?').get(video.id) as { output_path: string }
     expect(fs.existsSync(v.output_path)).toBe(true)
-  }, 180_000)
+  }, slow(180_000))
 })

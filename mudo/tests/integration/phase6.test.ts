@@ -24,7 +24,7 @@ import {
   videoLicenses,
 } from '../../src/core'
 import { PLANS } from '../../src/shared/plans'
-import { MIGRATIONS_DIR, makeEnv, waitFor, type TestEnv } from '../helpers/env'
+import { MIGRATIONS_DIR, makeEnv, waitFor, type TestEnv, slow } from '../helpers/env'
 import { fixtureLlm, fixtureSource, fixtureStock, fixtureTts } from '../helpers/fixtures'
 
 let env: TestEnv
@@ -41,7 +41,7 @@ async function generate(channelId: string) {
   const j = await waitFor(() => {
     const x = r.queue.get(job.id)
     return x && ['done', 'failed', 'needs_input'].includes(x.state) ? x : null
-  }, 180_000)
+  }, slow(180_000))
   await r.stop()
   return { video, job: j }
 }
@@ -63,7 +63,7 @@ describe('cota (seção 12)', () => {
     expect(quotaStatus(env.handle)).toMatchObject({ videosUsed: 6, videosRemaining: 0, month: monthKey() })
     expect(() => createVideoJob(env.handle, { channelId: ch.id, theme: 'Mais um', durationS: 60 })).toThrow(/esgotada/)
     expect(env.handle.sqlite.prepare('SELECT COUNT(*) n FROM videos').get()).toEqual({ n: 1 }) // nada foi criado
-  }, 200_000)
+  }, slow(200_000))
 
   it('vídeos em produção contam para não estourar; CLI devolve código 3', async () => {
     const ch = createChannel(env.handle, { name: 'C', niche: 'n', language: 'pt-BR' })
@@ -97,7 +97,7 @@ describe('repetição entre vídeos do canal (seção 10)', () => {
     expect(second.job.state).toBe('needs_input')
     expect(second.job.lastError).toMatchObject({ code: 'REVIEW_REJECTED' })
     expect((second.job.lastError as { message: string }).message).toContain('semelhança')
-  }, 300_000)
+  }, slow(300_000))
 })
 
 describe('canais e licenças (seção 9 e 11)', () => {
@@ -129,7 +129,7 @@ describe('canais e licenças (seção 9 e 11)', () => {
     // crédito faltando aparece como pendência e bloqueia a montagem
     env.handle.sqlite.prepare("UPDATE images SET credit_text = NULL WHERE source = 'pexels'").run()
     expect(videoLicenses(env.handle, video.id).filter((e) => e.status === 'missing_credit').length).toBe(imgs.length)
-  }, 200_000)
+  }, slow(200_000))
 })
 
 describe('testar conexão', () => {
