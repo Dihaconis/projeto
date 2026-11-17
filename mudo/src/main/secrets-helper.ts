@@ -22,7 +22,11 @@ export async function runSecretsHelper(store: SafeStorageSecretStore): Promise<v
         if ((e as NodeJS.ErrnoException).code !== 'EAGAIN') break
       }
     }
-    app.exit(0)
+    // saída normal (não app.exit): no Windows a chave do safeStorage fica no
+    // "Local State" do Chromium, que só é gravado no encerramento normal —
+    // com app.exit o próximo processo não conseguia decifrar o que foi salvo
+    if (app.isReady()) app.quit()
+    else app.exit(0)
   }
   try {
     const line = readRequestLine()

@@ -272,7 +272,8 @@ async function main(): Promise<void> {
     void runner.stop().finally(() => {
       handle.close()
       log.info('app encerrado')
-      app.exit(0)
+      // segue o encerramento normal (grava o "Local State", onde fica a chave do safeStorage)
+      app.quit()
     })
   })
 }
