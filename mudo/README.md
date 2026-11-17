@@ -2,8 +2,9 @@
 
 Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React + TypeScript + SQLite.
 
-> **Estado: Fase 3.** CLI gerando MP4 real com uma imagem licenciada por cena: acervo local →
-> Pexels → Pixabay → geração por IA. Legenda, movimento, trilha, loudnorm e thumbnail chegam na Fase 4.
+> **Estado: Fase 4.** A CLI gera o vídeo completo: imagem licenciada por cena, movimento,
+> legenda queimada com a palavra atual destacada, trilha com ducking, loudnorm −14 LUFS, cartela de
+> créditos e 2 thumbnails. As telas de produto chegam nas Fases 5–6.
 
 ## Requisitos de desenvolvimento
 
@@ -11,7 +12,8 @@ Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React
 - Windows 10/11 x64 (alvo). Linux/macOS funcionam para desenvolvimento e testes.
 
 ```bash
-npm install          # também baixa o modelo CLIP (~150 MB) com hash verificado (npm run models)
+npm install          # também baixa CLIP + whisper base (~290 MB) com hash verificado (npm run models)
+npm run binaries     # ffmpeg/ffprobe (hash conferido) e whisper-cli compilado da tag v1.9.5 (requer cmake + C++)
 npm run dev          # app com recarga
 npm run typecheck
 npm test             # unitários + integração (fila, provedores, pipeline, CLI gerando MP4 real com fixtures, kill -9)
@@ -136,6 +138,35 @@ Faixa de duração: alvos de 6–9 min usam a faixa fechada do briefing. A CLI a
 - **Embeddings:** CLIP local (`Xenova/clip-vit-base-patch32`, q8), offline, em revisão fixa. Os
   arquivos e seus SHA-256 estão em `scripts/models.lock.json` e o app nunca baixa nada em execução.
   Alternativa: OpenAI (só texto), com `config set embeddings.provider openai`.
+
+### Montagem (Fase 4)
+
+- **Movimento:**
+  - `zoompan` sobre o quadro 4K, decodificado uma vez.
+  - Alterna zoom in, zoom out, pan à esquerda e pan à direita, nunca dois iguais seguidos.
+  - Intensidade sutil por padrão (preset `motionIntensity`).
+- **Cortes:** corte seco entre cenas. Na virada de ato, a cena anterior continua o movimento por
+  0,4 s e funde na nova (crossfade); a linha do tempo não muda.
+- **Legenda `.ASS` queimada em cada segmento:**
+  - Até 2 linhas de ~32 caracteres, palavra atual destacada (cor do preset).
+  - Fonte embarcada (Archivo Black, OFL), contorno grosso, área segura inferior.
+  - Tempos das palavras: os do provedor quando existem (ElevenLabs, descontando o silêncio cortado);
+    senão whisper.cpp (`base`) alinhado ao texto conhecido por programação dinâmica.
+  - Sincronia medida no teste de aceite: < 150 ms.
+- **Trilha:**
+  - Clima do canal (`calm`, `upbeat`, `dramatic`, `mysterious`, `inspiring`).
+  - Músicas do usuário com licença (`mudo music import`). Senão, trilha embutida sintetizada pelo
+    próprio ffmpeg (licença própria).
+  - Em loop, com fade e `sidechaincompress` sob a voz.
+- **Loudnorm** em duas passadas: −14 LUFS integrados, pico real ≤ −1 dBTP (alvo −1,5 para margem
+  do AAC).
+- **Fechamento:**
+  - Cartela final de créditos (páginas de 3,5 s), com a narração, as imagens e a música que exigem
+    crédito.
+  - 2 thumbnails 1280×720 com as imagens mais fortes do ato 1, gradiente escuro e título em caixa
+    alta (Anton, OFL).
+- **Binários e modelos:** ffmpeg/ffprobe com SHA-256 em `scripts/binaries.lock.json`; whisper-cli
+  compilado de commit fixo; modelos com SHA-256 em `scripts/models.lock.json`.
 
 ### Fila e retomada
 

@@ -1,7 +1,7 @@
 // Baixa o modelo CLIP local (embeddings offline, seção 7) numa revisão fixa e
 // confere o SHA-256 de cada arquivo contra scripts/models.lock.json.
 // Uso: node scripts/fetch-models.mjs            (baixa e verifica)
-//      node scripts/fetch-models.mjs --update   (regrava o lock — só ao trocar de revisão)
+//      node scripts/fetch-models.mjs --update   (preenche o hash de arquivos novos no lock)
 import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -21,7 +21,9 @@ for (const model of lock.models) {
   const dir = path.join(outRoot, model.id)
   for (const f of model.files) {
     const dest = path.join(dir, f.path)
-    if (fs.existsSync(dest) && !update && sha256(dest) === f.sha256) continue
+    // --update só preenche entradas novas (hash vazio); as demais seguem verificadas
+    const pending = update && !f.sha256
+    if (fs.existsSync(dest) && !pending && sha256(dest) === f.sha256) continue
     fs.mkdirSync(path.dirname(dest), { recursive: true })
     const url = `https://huggingface.co/${model.id}/resolve/${model.revision}/${f.path}`
     process.stdout.write(`baixando ${model.id}/${f.path} … `)
@@ -30,7 +32,7 @@ for (const model of lock.models) {
     const tmp = `${dest}.part`
     await pipeline(Readable.fromWeb(res.body), fs.createWriteStream(tmp))
     const got = sha256(tmp)
-    if (update) f.sha256 = got
+    if (pending) f.sha256 = got
     else if (got !== f.sha256) {
       fs.rmSync(tmp, { force: true })
       throw new Error(`hash não confere para ${f.path}: esperado ${f.sha256}, veio ${got}`)

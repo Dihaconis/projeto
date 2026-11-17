@@ -84,6 +84,10 @@ export const VIDEO_SPEC = {
 export const AI_DISCLOSURE_METADATA =
   'Conteudo gerado/alterado por IA (roteiro, narracao e montagem automatizados) - MUDO'
 
+/** Climas de trilha (seção 8.6). */
+export const MUSIC_MOODS = ['calm', 'upbeat', 'dramatic', 'mysterious', 'inspiring'] as const
+export type MusicMood = (typeof MUSIC_MOODS)[number]
+
 /** Licenças aceitas (seção 9). */
 export const IMAGE_LICENSES = ['cc0', 'public_domain', 'pexels', 'pixabay', 'own', 'generated'] as const
 export type ImageLicense = (typeof IMAGE_LICENSES)[number]

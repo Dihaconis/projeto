@@ -26,6 +26,8 @@ export const videoCheckpointSchema = z.object({
   tts: z.object({ provider: z.string(), voiceId: z.string() }).optional(),
   narration: z.object({ totalMs: z.number(), tempo: z.number() }).optional(),
   segments: z.record(z.string(), z.literal(true)).default({}),
+  /** Trilha escolhida e áudio final (mix + loudnorm) pronto. */
+  audio: z.object({ musicId: z.string() }).optional(),
   output: z.object({ mp4: z.string(), txt: z.string() }).optional(),
 })
 export type VideoCheckpoint = z.infer<typeof videoCheckpointSchema>

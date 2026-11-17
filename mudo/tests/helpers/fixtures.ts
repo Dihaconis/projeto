@@ -156,16 +156,27 @@ export function fixtureLlm(id = 'fixture-llm', log?: FixtureLog, opts: { script?
   }
 }
 
-/** WAV PCM 24 kHz mono com um tom modulado — duração proporcional ao texto (~150 ppm). */
-export function speechLikeWav(text: string, wpm = 150): Buffer {
+/** Silêncio nas pontas do áudio de fixture (o pipeline precisa cortar e descontar). */
+export const FIXTURE_LEAD_MS = 250
+export const FIXTURE_TAIL_MS = 150
+
+/**
+ * WAV PCM 24 kHz mono: silêncio, um tom modulado com duração proporcional ao
+ * texto (~150 ppm) e silêncio. Devolve também o alinhamento por caractere
+ * (como o endpoint com timestamps da ElevenLabs), em segundos.
+ */
+export function speechLikeWav(text: string, wpm = 150): { wav: Buffer; alignment: { chars: string[]; startS: number[]; endS: number[] } } {
   const rate = 24_000
   const words = text.trim().split(/\s+/).length
-  const seconds = (words / wpm) * 60
-  const n = Math.round(seconds * rate)
+  const speechS = (words / wpm) * 60
+  const lead = FIXTURE_LEAD_MS / 1000
+  const total = lead + speechS + FIXTURE_TAIL_MS / 1000
+  const n = Math.round(total * rate)
   const data = Buffer.alloc(n * 2)
   for (let i = 0; i < n; i++) {
     const t = i / rate
-    const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 3 * t)
+    if (t < lead || t > lead + speechS) continue
+    const env = 0.5 + 0.5 * Math.sin(2 * Math.PI * 3 * (t - lead))
     const v = Math.sin(2 * Math.PI * 180 * t) * 0.4 * env + Math.sin(2 * Math.PI * 360 * t) * 0.1
     data.writeInt16LE(Math.round(v * 32767 * 0.8), i * 2)
   }
@@ -182,10 +193,15 @@ export function speechLikeWav(text: string, wpm = 150): Buffer {
   h.writeUInt16LE(16, 34)
   h.write('data', 36, 'ascii')
   h.writeUInt32LE(data.length, 40)
-  return Buffer.concat([h, data])
+  const chars = [...text]
+  const dt = speechS / chars.length
+  return {
+    wav: Buffer.concat([h, data]),
+    alignment: { chars, startS: chars.map((_, i) => lead + i * dt), endS: chars.map((_, i) => lead + (i + 1) * dt) },
+  }
 }
 
-export function fixtureTts(id = 'fixture-tts', log?: FixtureLog, opts: { wpm?: number; onCall?: () => void } = {}): TtsProvider {
+export function fixtureTts(id = 'fixture-tts', log?: FixtureLog, opts: { wpm?: number; onCall?: () => void; noAlignment?: boolean } = {}): TtsProvider {
   return {
     id,
     caps: { languages: ['pt-BR', 'es', 'en'], wordTimestamps: false },
@@ -195,7 +211,8 @@ export function fixtureTts(id = 'fixture-tts', log?: FixtureLog, opts: { wpm?: n
       if (signal.aborted) throw signal.reason
       log?.calls.push({ provider: id, kind: 'tts', at: Date.now() })
       opts.onCall?.()
-      return { audio: speechLikeWav(input.text, opts.wpm), ext: 'wav', model: 'fixture', chars: input.text.length, costCents: input.text.length / 1000 }
+      const { wav, alignment } = speechLikeWav(input.text, opts.wpm)
+      return { audio: wav, ext: 'wav', model: 'fixture', chars: input.text.length, costCents: input.text.length / 1000, ...(opts.noAlignment ? {} : { alignment }) }
     },
   }
 }

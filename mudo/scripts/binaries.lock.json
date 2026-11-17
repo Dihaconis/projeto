@@ -1,0 +1,14 @@
+{
+  "whisper": {
+    "repo": "https://github.com/ggml-org/whisper.cpp",
+    "tag": "v1.9.5",
+    "commit": "d1be6fde11ac6e0407606b4e42fe72d34add8037",
+    "license": "MIT"
+  },
+  "ffmpeg": {
+    "linux-x64": {
+      "ffmpeg": "e7e7fb30477f717e6f55f9180a70386c62677ef8a4d4d1a5d948f4098aa3eb99",
+      "ffprobe": "e3624d8ff953c7e2f1f3e3ee24bfa64399bcb3bd5c302b2216d3f794b31bbbf6"
+    }
+  }
+}

@@ -62,7 +62,7 @@ describe('vídeo: kill -9 durante a montagem', () => {
     const callsAfter = env.handle.sqlite.prepare('SELECT COUNT(*) n FROM provider_log').get() as { n: number }
     expect(callsAfter.n).toBe(callsBefore.n) // nenhum roteiro, revisão, cena ou TTS refeito
     expect(fs.statSync(path.join(env.paths.work, video.id, 'narration.wav')).mtimeMs).toBe(narrationMtime)
-    for (const n of Object.keys(cpBefore.segments)) {
+    for (const n of Object.keys(cpBefore.segments).filter((k) => /^\d+$/.test(k))) {
       const f = `${n.padStart(3, '0')}.mp4`
       expect(fs.statSync(path.join(segDir, f)).mtimeMs).toBe(segsBefore.get(f)) // segmento pronto não foi refeito
     }

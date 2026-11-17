@@ -9,6 +9,30 @@ import type { SpawnOptions, SpawnResult } from '../proc/spawn'
 export interface MediaBinaries {
   ffmpeg: string
   ffprobe: string
+  /** whisper.cpp (`whisper-cli`) para alinhar a legenda quando o TTS não dá timestamps. */
+  whisper: string | null
+  /** Modelo `ggml-base.bin` do whisper.cpp. */
+  whisperModel: string | null
+  /** Fontes embarcadas (licença OFL) para legenda, thumbnail e cartela. */
+  fontsDir: string
+}
+
+/** Raiz do projeto em desenvolvimento (pasta com o package.json do MUDO). */
+export function findAppRoot(from = process.cwd()): string {
+  let dir = path.resolve(from)
+  for (;;) {
+    const pkg = path.join(dir, 'package.json')
+    if (fs.existsSync(pkg)) {
+      try {
+        if ((JSON.parse(fs.readFileSync(pkg, 'utf8')) as { name?: string }).name === 'mudo') return dir
+      } catch {
+        // segue subindo
+      }
+    }
+    const up = path.dirname(dir)
+    if (up === dir) return path.resolve(from)
+    dir = up
+  }
 }
 
 /** Função que executa um processo (no job: `ctx.spawn`, que registra e mata junto). */
@@ -23,9 +47,18 @@ export type Spawner = (
  * pasta `binDir` (no app empacotado: `resources/bin`), depois os pacotes
  * `ffmpeg-static`/`ffprobe-static` (desenvolvimento).
  */
-export function resolveMediaBinaries(opts: { binDir?: string | undefined; env?: NodeJS.ProcessEnv } = {}): MediaBinaries {
+export function resolveMediaBinaries(
+  opts: { binDir?: string | undefined; modelsDir?: string | undefined; assetsDir?: string | undefined; env?: NodeJS.ProcessEnv } = {},
+): MediaBinaries {
   const env = opts.env ?? process.env
   const exe = process.platform === 'win32' ? '.exe' : ''
+  const appRoot = opts.binDir && opts.modelsDir && opts.assetsDir ? '' : findAppRoot()
+  const binDir = opts.binDir ?? path.join(appRoot, 'resources', 'bin')
+  const modelsDir = opts.modelsDir ?? path.join(appRoot, 'resources', 'models')
+  const assetsDir = opts.assetsDir ?? path.join(appRoot, 'assets')
+  const whisper = env.MUDO_WHISPER ?? path.join(binDir, `whisper-cli${exe}`)
+  const whisperModel = path.join(modelsDir, 'ggerganov', 'whisper.cpp', 'ggml-base.bin')
+  opts = { ...opts, binDir }
   const pick = (envKey: string, name: string, fallback: () => string): string => {
     const fromEnv = env[envKey]
     if (fromEnv) return fromEnv
@@ -41,6 +74,9 @@ export function resolveMediaBinaries(opts: { binDir?: string | undefined; env?: 
       return ffmpegStatic
     }),
     ffprobe: pick('MUDO_FFPROBE', 'ffprobe', () => ffprobeStatic.path),
+    whisper: fs.existsSync(whisper) ? whisper : null,
+    whisperModel: fs.existsSync(whisperModel) ? whisperModel : null,
+    fontsDir: path.join(assetsDir, 'fonts'),
   }
 }
 
@@ -60,9 +96,10 @@ export async function runFfmpeg(
   spawn: Spawner,
   bin: MediaBinaries,
   args: readonly string[],
-  opts: { expectedS?: number; onProgress?: (fraction: number) => void; what: string },
+  opts: { expectedS?: number; onProgress?: (fraction: number) => void; what: string; cwd?: string },
 ): Promise<void> {
   const r = await spawn(bin.ffmpeg, ['-hide_banner', '-nostdin', '-y', ...args], {
+    ...(opts.cwd ? { cwd: opts.cwd } : {}),
     onStderrLine: (line) => {
       if (!opts.onProgress || !opts.expectedS) return
       const t = parseFfmpegTimeS(line)

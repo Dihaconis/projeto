@@ -27,8 +27,9 @@ import {
   type ProviderSource,
 } from '../core'
 import { importFolder, importImageFile, listImages, setImageLicense, type ImportResult } from '../core/images/library'
+import { importMusic, listMusic, MUSIC_LICENSES } from '../core/media/music'
 import { SECRET_IDS, secretIdSchema, SECRET_LABELS } from '../core/secrets'
-import { DURATION, LANGUAGES, LIBRARY_LICENSES, STAGE_LABELS, TERMINAL_STATES, type JobState } from '../shared/enums'
+import { DURATION, LANGUAGES, LIBRARY_LICENSES, MUSIC_MOODS, STAGE_LABELS, TERMINAL_STATES, type JobState } from '../shared/enums'
 import type { SecretsAdmin } from './helper-secrets'
 
 /** Códigos de saída estáveis (seção 13). */
@@ -61,12 +62,14 @@ const USAGE = `Uso:
   mudo resume <jobId> [--wait] [--json]
   mudo cancel <jobId> [--json]
   mudo library list [--json]
-  mudo channel create --name "..." --niche "..." --lang pt-BR [--tts elevenlabs|openai|azure] [--voice <id>] [--manual-review] [--json]
+  mudo channel create --name "..." --niche "..." --lang pt-BR [--tts elevenlabs|openai|azure] [--voice <id>] [--mood calm|...] [--highlight #FFD400] [--motion subtle|medium] [--manual-review] [--json]
   mudo channel list [--json]
   mudo estimate --theme "..." --channel <id> [--lang ...] [--duration 420] [--json]
   mudo images import <pasta|arquivo> [--license cc0|public_domain|own] [--author "..."] [--credit "..."] [--json]
   mudo images list [--quarantine] [--json]
   mudo images license <imageId> --license cc0|public_domain|own|none [--credit "..."] [--author "..."]
+  mudo music import <arquivo> --mood calm|upbeat|dramatic|mysterious|inspiring --license own|cc0|public_domain [--credit "..."]
+  mudo music list [--json]
   mudo keys set <${SECRET_IDS.join('|')}>      (lê a chave do stdin)
   mudo keys list | mudo keys delete <id>
   mudo config set <chave> <valor>
@@ -186,6 +189,8 @@ async function dispatch(argv: string[], deps: CliDeps): Promise<number> {
       throw new UsageError('use: mudo channel create|list')
     case 'estimate':
       return estimate([sub, ...rest].filter((x): x is string => x !== undefined), deps)
+    case 'music':
+      return musicCmd(sub, rest, deps)
     case 'images':
       return imagesCmd(sub, rest, deps)
     case 'keys':
@@ -368,6 +373,9 @@ async function channelCreate(args: string[], deps: CliDeps): Promise<number> {
     tts: { type: 'string' },
     voice: { type: 'string' },
     style: { type: 'string' },
+    mood: { type: 'string' },
+    highlight: { type: 'string' },
+    motion: { type: 'string' },
     'manual-review': { type: 'boolean', default: false },
     json: { type: 'boolean', default: false },
   })
@@ -384,7 +392,13 @@ async function channelCreate(args: string[], deps: CliDeps): Promise<number> {
         language: langOpt(values.lang)!,
         ttsProvider: tts?.data,
         voiceId: values.voice,
-        stylePreset: { manualReview: !!values['manual-review'], ...(values.style ? { scriptStyle: values.style } : {}) },
+        musicMood: values.mood as never,
+        stylePreset: {
+          manualReview: !!values['manual-review'],
+          ...(values.style ? { scriptStyle: values.style } : {}),
+          ...(values.highlight ? { highlightColor: values.highlight } : {}),
+          ...(values.motion ? { motionIntensity: values.motion as never } : {}),
+        },
       })
     } catch (e) {
       if (e instanceof z.ZodError) throw new JobError('INVALID_INPUT', e.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '))
@@ -568,4 +582,39 @@ async function imagesCmd(sub: string | undefined, rest: string[], deps: CliDeps)
     }
   }
   throw new UsageError('use: mudo images import|list|license')
+}
+
+async function musicCmd(sub: string | undefined, rest: string[], deps: CliDeps): Promise<number> {
+  if (sub === 'import') {
+    const { values, positionals } = parse(rest, { mood: { type: 'string' }, license: { type: 'string' }, credit: { type: 'string' }, json: { type: 'boolean', default: false } })
+    const file = positionals[0]
+    const mood = z.enum(MUSIC_MOODS).safeParse(values.mood)
+    const license = z.enum(MUSIC_LICENSES).safeParse(values.license)
+    if (!file) throw new UsageError('music import precisa do arquivo')
+    if (!mood.success) throw new JobError('INVALID_INPUT', `--mood deve ser ${MUSIC_MOODS.join(', ')}`)
+    if (!license.success) throw new JobError('INVALID_INPUT', `--license deve ser ${MUSIC_LICENSES.join(', ')} (sem licença a música não entra)`)
+    const h = open(deps)
+    try {
+      const row = importMusic(h, file, { mood: mood.data, license: license.data, credit: values.credit ?? null })
+      if (values.json) deps.io.out(`${JSON.stringify({ musicId: row.id, mood: row.mood, license: row.license })}\n`)
+      else deps.io.out(`Música importada (${row.mood}, ${row.license}): ${row.id}\n`)
+      return EXIT.ok
+    } finally {
+      h.close()
+    }
+  }
+  if (sub === 'list') {
+    const { values } = parse(rest, { json: { type: 'boolean', default: false } })
+    const h = open(deps)
+    try {
+      const rows = listMusic(h).map((r) => ({ musicId: r.id, mood: r.mood, license: r.license, creditText: r.creditText, path: r.path }))
+      if (values.json) deps.io.out(`${JSON.stringify(rows)}\n`)
+      else if (rows.length === 0) deps.io.out('Nenhuma música própria. O MUDO usa a trilha embutida do clima do canal.\n')
+      else for (const r of rows) deps.io.out(`${r.musicId}  ${String(r.mood).padEnd(10)} ${String(r.license).padEnd(13)} ${r.path}\n`)
+      return EXIT.ok
+    } finally {
+      h.close()
+    }
+  }
+  throw new UsageError('use: mudo music import|list')
 }

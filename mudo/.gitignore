@@ -5,3 +5,5 @@ release/
 *.log
 .vite/
 resources/models/
+.cache/
+resources/bin/

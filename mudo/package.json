@@ -56,7 +56,8 @@
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "cli": "node scripts/cli.mjs",
     "models": "node scripts/fetch-models.mjs",
-    "postinstall": "node scripts/fetch-models.mjs"
+    "postinstall": "node scripts/fetch-models.mjs",
+    "binaries": "node scripts/fetch-binaries.mjs"
   },
   "engines": {
     "node": ">=22"
