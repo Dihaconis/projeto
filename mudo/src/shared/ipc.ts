@@ -1,6 +1,8 @@
 import { z } from 'zod'
-import { videoRequestSchema } from './channel'
-import { ERROR_CODES, JOB_STATES, LANGUAGES, STAGES } from './enums'
+import { secretIdSchema } from '../core/secrets'
+import { channelInputSchema, stylePresetSchema, videoRequestSchema } from './channel'
+import { ERROR_CODES, JOB_STATES, LANGUAGES, MUSIC_MOODS, STAGES } from './enums'
+import { PLAN_IDS } from './plans'
 
 /** Vídeo + job + canal, como as telas Meus Vídeos e Biblioteca mostram. */
 export const videoViewSchema = z.object({
@@ -33,7 +35,75 @@ export const channelSummarySchema = z.object({
   name: z.string(),
   niche: z.string(),
   language: z.enum(LANGUAGES),
+  ttsProvider: z.enum(['elevenlabs', 'openai', 'azure']).nullable(),
+  voiceId: z.string().nullable(),
+  musicMood: z.enum(MUSIC_MOODS).nullable(),
+  stylePreset: stylePresetSchema,
+  videoCount: z.number().int(),
 })
+export type ChannelSummary = z.infer<typeof channelSummarySchema>
+
+export const licenseEntrySchema = z.object({
+  kind: z.enum(['image', 'music']),
+  assetId: z.string(),
+  scenes: z.array(z.number()),
+  source: z.string(),
+  author: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  license: z.string().nullable(),
+  requiresCredit: z.boolean(),
+  creditText: z.string().nullable(),
+  status: z.enum(['ok', 'missing_license', 'missing_credit']),
+})
+export type LicenseEntryView = z.infer<typeof licenseEntrySchema>
+
+export const libraryImageSchema = z.object({
+  id: z.string(),
+  fileName: z.string(),
+  source: z.string(),
+  license: z.string().nullable(),
+  author: z.string().nullable(),
+  creditText: z.string().nullable(),
+  width: z.number().nullable(),
+  height: z.number().nullable(),
+  usedCount: z.number(),
+})
+
+export const quotaSchema = z.object({
+  planId: z.enum(PLAN_IDS),
+  planName: z.string(),
+  month: z.string(),
+  videosUsed: z.number(),
+  videosPending: z.number(),
+  videosLimit: z.number().nullable(),
+  videosRemaining: z.number().nullable(),
+  cutsUsed: z.number(),
+  cutsLimit: z.number().nullable(),
+  cutsRemaining: z.number().nullable(),
+})
+export type QuotaView = z.infer<typeof quotaSchema>
+
+/** Configurações editáveis pela tela (seção 11.6). Chaves nunca voltam ao renderer: só quais existem. */
+export const settingsSchema = z.object({
+  configuredKeys: z.array(secretIdSchema),
+  llmOrder: z.array(z.enum(['anthropic', 'openai', 'gemini'])).min(1),
+  ttsOrder: z.array(z.enum(['elevenlabs', 'openai', 'azure'])).min(1),
+  imagesOrder: z.array(z.enum(['pexels', 'pixabay'])).min(1),
+  imageGeneration: z.boolean(),
+  embeddings: z.enum(['clip', 'openai']),
+  anthropicModel: z.string().min(1),
+  anthropicEffort: z.enum(['low', 'medium', 'high', 'xhigh', 'max']),
+  openaiLlmModel: z.string().min(1),
+  openaiTtsModel: z.string().min(1),
+  geminiModel: z.string().min(1),
+  elevenlabsModel: z.string().min(1),
+  azureRegion: z.string().regex(/^[a-z0-9]*$/),
+  outputDir: z.string().min(1),
+  libraryDir: z.string(),
+  concurrency: z.number().int().min(1).max(8),
+  planId: z.enum(PLAN_IDS),
+})
+export type SettingsView = z.infer<typeof settingsSchema>
 
 const scriptActSchema = z.object({ n: z.number().int(), heading: z.string().trim().min(1).max(120), text: z.string().trim().min(1).max(5000) })
 export const scriptForEditSchema = z.object({
@@ -77,6 +147,33 @@ export const ipcContract = {
   'videos:delete': { input: idInput, output: okOutput },
   'videos:openFolder': { input: idInput, output: okOutput },
   'videos:copy': { input: z.object({ id: z.uuid(), field: z.enum(['title', 'description']) }), output: okOutput },
+  'channels:save': { input: z.object({ id: z.uuid().nullable(), channel: channelInputSchema }), output: channelSummarySchema },
+  'channels:remove': { input: idInput, output: z.object({ ok: z.boolean(), result: z.enum(['deleted', 'archived']) }) },
+  'channels:previewVoice': {
+    input: z.object({ language: z.enum(LANGUAGES), ttsProvider: z.enum(['elevenlabs', 'openai', 'azure']).nullable(), voiceId: z.string().nullable() }),
+    output: z.object({ provider: z.string(), dataUrl: z.string() }),
+  },
+  'licenses:videos': { input: z.undefined(), output: z.array(z.object({ id: z.string(), title: z.string().nullable(), theme: z.string(), state: z.string(), createdAt: z.number() })) },
+  'licenses:forVideo': { input: idInput, output: z.array(licenseEntrySchema) },
+  'licenses:exportCsv': { input: z.object({ ids: z.array(z.uuid()).min(1) }), output: z.object({ ok: z.boolean(), path: z.string().nullable(), rows: z.number() }) },
+  'licenses:setCredit': { input: z.object({ imageId: z.uuid(), credit: z.string().trim().min(1).max(300) }), output: okOutput },
+  'images:list': { input: z.object({ quarantine: z.boolean() }), output: z.array(libraryImageSchema) },
+  'images:setLicense': {
+    input: z.object({ id: z.uuid(), license: z.enum(['cc0', 'public_domain', 'own']).nullable(), credit: z.string().trim().max(300).nullable() }),
+    output: okOutput,
+  },
+  'images:import': {
+    input: z.object({ license: z.enum(['cc0', 'public_domain', 'own']).nullable(), credit: z.string().trim().max(300).nullable() }),
+    output: z.object({ ok: z.boolean(), imported: z.number(), updated: z.number(), rejected: z.number(), quarantined: z.number(), message: z.string().nullable() }),
+  },
+  'settings:get': { input: z.undefined(), output: settingsSchema },
+  'settings:save': { input: settingsSchema.omit({ configuredKeys: true }).partial(), output: settingsSchema },
+  'settings:chooseFolder': { input: z.object({ purpose: z.enum(['output', 'library']) }), output: z.object({ path: z.string().nullable() }) },
+  'keys:set': { input: z.object({ id: secretIdSchema, value: z.string().trim().min(8).max(4096) }), output: okOutput },
+  'keys:delete': { input: z.object({ id: secretIdSchema }), output: okOutput },
+  'keys:test': { input: z.object({ id: secretIdSchema }), output: z.object({ ok: z.boolean(), message: z.string(), latencyMs: z.number() }) },
+  'quota:status': { input: z.undefined(), output: quotaSchema },
+  'app:legal': { input: z.object({ doc: z.enum(['terms', 'privacy', 'third-party']) }), output: z.object({ title: z.string(), text: z.string() }) },
   'runner:status': { input: z.undefined(), output: runnerStatusSchema },
   'app:info': {
     input: z.undefined(),
@@ -94,6 +191,7 @@ export type IpcOutput<C extends IpcChannel> = z.output<IpcContract[C]['output']>
 export const ipcEvents = {
   'jobs:changed': z.object({ jobId: z.string().nullable() }),
   'runner:status': runnerStatusSchema,
+  'images:importProgress': z.object({ done: z.number(), file: z.string(), status: z.string(), reason: z.string().nullable() }),
 } as const
 export type IpcEvent = keyof typeof ipcEvents
 export type IpcEventPayload<E extends IpcEvent> = z.output<(typeof ipcEvents)[E]>

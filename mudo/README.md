@@ -2,10 +2,9 @@
 
 Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React + TypeScript + SQLite.
 
-> **Estado: Fase 5.** O app tem as telas **Meus Vídeos** e **Biblioteca** ligadas à fila real, e a
-> CLI gera o vídeo completo: imagem licenciada por cena, movimento, legenda queimada com a palavra
-> atual destacada, trilha com ducking, loudnorm −14 LUFS, cartela de créditos e 2 thumbnails.
-> Canais, Licenças, Configurações e cota chegam na Fase 6.
+> **Estado: Fase 6.** App completo para gerar vídeos: Meus Vídeos, Biblioteca, Canais, Licenças e
+> Configurações, com assistente de primeiro uso e cota por plano. A CLI usa o mesmo core. Cortes
+> (Beta) chegam na Fase 7; o instalador, na Fase 8.
 
 ## Requisitos de desenvolvimento
 
@@ -139,6 +138,31 @@ Faixa de duração: alvos de 6–9 min usam a faixa fechada do briefing. A CLI a
 - **Embeddings:** CLIP local (`Xenova/clip-vit-base-patch32`, q8), offline, em revisão fixa. Os
   arquivos e seus SHA-256 estão em `scripts/models.lock.json` e o app nunca baixa nada em execução.
   Alternativa: OpenAI (só texto), com `config set embeddings.provider openai`.
+
+### Canais, Licenças, Configurações e cota (Fase 6)
+
+- **Canais:**
+  - Criar, editar e remover; um canal com vídeos é arquivado.
+  - Preset por canal: voz (provedor e id, com prévia de áudio), trilha, cores da legenda, ritmo de
+    movimento, tom do roteiro e revisão manual.
+- **Repetição entre vídeos do canal (seção 10):**
+  - A revisão reprova o roteiro que repete a estrutura de um dos 10 últimos do canal.
+  - Mede sequências de 3 palavras e aberturas de frase em comum; limite `review.maxSimilarity`,
+    padrão 0,30.
+  - Não usa embedding: o CLIP só lê 77 tokens.
+- **Licenças:**
+  - Por vídeo, cada imagem e a música, com fonte, autor, URL de origem, licença, crédito e situação.
+  - Crédito que falta pode ser preenchido na tela. Exportação CSV de um vídeo ou de todos.
+  - Acervo: importar a pasta (CLIP roda no runner, com progresso) e liberar imagens em quarentena.
+- **Configurações:**
+  - Chaves com "testar conexão"; a chave nunca volta à tela.
+  - Ordem dos provedores, modelos, embeddings, pastas, jobs simultâneos, plano e cota.
+  - Sobre: versão, Termos, Privacidade e licenças de terceiros (`npm run legal`).
+- **Cota (seção 12):**
+  - Planos só em `src/shared/plans.ts`. O padrão é Ilimitado (uso pessoal).
+  - Checada antes de enfileirar, contando os vídeos em produção. Consumida só em `done`.
+  - Estouro → `QUOTA_EXCEEDED` com quanto resta (código 3 na CLI). Reset no dia 1, no fuso local.
+- **Primeiro uso:** assistente com as chaves e o primeiro canal, depois Meus Vídeos.
 
 ### Telas (Fase 5)
 

@@ -1,3 +1,4 @@
+import fs from 'node:fs'
 /**
  * Entrada do `utilityProcess`: consome a fila fora do main e do renderer.
  * Conversa com o main só por mensagens validadas por zod.
@@ -15,6 +16,7 @@ import {
   type SecretId,
   type SecretStore,
 } from '../core'
+import { importFolder, importImageFile, type ImportResult, type LibraryLicense } from '../core/images/library'
 import { fromRunnerSchema, toRunnerSchema, type FromRunner } from '../shared/runner-protocol'
 
 const port = process.parentPort
@@ -55,6 +57,9 @@ port.on('message', (e: Electron.MessageEvent) => {
       cb?.(msg.value)
       break
     }
+    case 'import-images':
+      void importImages(msg.reqId, msg.target, msg.license, msg.credit, msg.author)
+      break
     case 'init':
       void init(msg.dataDir, msg.binDir, msg.modelsDir, msg.concurrency, msg.orphanAfterMs).catch((err: unknown) => {
         send({ type: 'fatal', message: err instanceof Error ? err.message : String(err) })
@@ -99,7 +104,7 @@ async function init(dataDir: string, binDir: string | null, modelsDir: string, c
     paths,
     log,
     handlers: jobHandlers,
-    providers: configuredProviders(handle, remoteSecrets, { modelsDir }),
+    providers: (providersForImport = configuredProviders(handle, remoteSecrets, { modelsDir })),
     media: resolveMediaBinaries({ binDir: binDir ?? undefined }),
     concurrency,
     orphanAfterMs,
@@ -108,4 +113,30 @@ async function init(dataDir: string, binDir: string | null, modelsDir: string, c
   runner.start()
   log.info({ runnerId: runner.id, concurrency, orphanAfterMs }, 'runner iniciado')
   send({ type: 'ready', runnerId: runner.id })
+}
+
+let providersForImport: ReturnType<typeof configuredProviders> | null = null
+
+/** Importação do acervo pedida pela interface: pHash + CLIP aqui, progresso por mensagem. */
+async function importImages(reqId: number, target: string, license: LibraryLicense | null, credit: string | null, author: string | null): Promise<void> {
+  const result = { imported: 0, updated: 0, rejected: 0, quarantined: 0 }
+  try {
+    if (!handle || !providersForImport) throw new Error('runner ainda não iniciado')
+    const emb = await providersForImport.embeddings()
+    let done = 0
+    const onFile = (r: ImportResult) => {
+      done++
+      if (r.status === 'imported') result.imported++
+      else if (r.status === 'updated') result.updated++
+      else result.rejected++
+      if (r.status !== 'rejected' && r.quarantined) result.quarantined++
+      send({ type: 'import-progress', reqId, done, file: r.file, status: r.status, reason: r.reason ?? null })
+    }
+    const opts = { license, credit, author }
+    if (fs.statSync(target).isDirectory()) await importFolder(handle, emb, target, opts, onFile)
+    else onFile(await importImageFile(handle, emb, target, opts))
+    send({ type: 'import-done', reqId, ...result, error: null })
+  } catch (err) {
+    send({ type: 'import-done', reqId, ...result, error: err instanceof Error ? err.message : String(err) })
+  }
 }

@@ -1,10 +1,14 @@
-import { FileText, Film, LibraryBig } from 'lucide-react'
+import { FileText, Film, LibraryBig, Settings, ShieldCheck, Tv } from 'lucide-react'
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import type { RunnerStatus } from '../../shared/ipc'
 import { Button } from '@/components/ui/button'
 import { mudo } from '@/lib/bridge'
 import { cn } from '@/lib/utils'
+import { ChannelsScreen } from '@/screens/ChannelsScreen'
 import { LibraryScreen } from '@/screens/LibraryScreen'
+import { LicensesScreen } from '@/screens/LicensesScreen'
+import { Onboarding } from '@/screens/Onboarding'
+import { SettingsScreen } from '@/screens/SettingsScreen'
 import { VideosScreen } from '@/screens/VideosScreen'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
@@ -29,14 +33,24 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
   }
 }
 
-type Screen = 'videos' | 'library'
+type Screen = 'videos' | 'library' | 'channels' | 'licenses' | 'settings'
 const NAV: Array<{ id: Screen; label: string; icon: typeof Film }> = [
   { id: 'videos', label: 'Meus Vídeos', icon: Film },
   { id: 'library', label: 'Biblioteca', icon: LibraryBig },
+  { id: 'channels', label: 'Canais', icon: Tv },
+  { id: 'licenses', label: 'Licenças', icon: ShieldCheck },
+  { id: 'settings', label: 'Configurações', icon: Settings },
 ]
 
 export function App() {
   const [screen, setScreen] = useState<Screen>('videos')
+  // primeiro uso: sem canal e sem nenhuma chave → assistente curto
+  const [onboarding, setOnboarding] = useState<boolean | null>(null)
+  useEffect(() => {
+    void Promise.all([mudo.invoke('channels:list'), mudo.invoke('settings:get')])
+      .then(([c, s]) => setOnboarding(c.length === 0 && s.configuredKeys.length === 0))
+      .catch(() => setOnboarding(false))
+  }, [])
   const [runner, setRunner] = useState<RunnerStatus | null>(null)
   const [version, setVersion] = useState('')
 
@@ -80,7 +94,21 @@ export function App() {
               {runner.message ?? (runner.state === 'starting' ? 'Iniciando o processo de geração…' : 'Processo de geração parado.')}
             </div>
           )}
-          <div className="min-h-0 flex-1">{screen === 'videos' ? <VideosScreen onOpenLibrary={() => setScreen('library')} /> : <LibraryScreen />}</div>
+          <div className="min-h-0 flex-1">
+            {onboarding ? (
+              <Onboarding onDone={() => (setOnboarding(false), setScreen('videos'))} />
+            ) : screen === 'videos' ? (
+              <VideosScreen onOpenLibrary={() => setScreen('library')} />
+            ) : screen === 'library' ? (
+              <LibraryScreen />
+            ) : screen === 'channels' ? (
+              <ChannelsScreen />
+            ) : screen === 'licenses' ? (
+              <LicensesScreen />
+            ) : (
+              <SettingsScreen />
+            )}
+          </div>
         </ErrorBoundary>
       </main>
     </div>

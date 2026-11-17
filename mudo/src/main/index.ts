@@ -18,7 +18,6 @@ import {
   getScriptForEdit,
   getSetting,
   getVideo,
-  listChannels,
   listVideoViews,
   migrateDatabase,
   openDatabase,
@@ -26,9 +25,10 @@ import {
   videoMediaPath,
 } from '../core'
 import { DEFAULTS } from '../shared/enums'
-import type { RunnerStatus } from '../shared/ipc'
+import type { IpcOutput, RunnerStatus } from '../shared/ipc'
 import { registerIpc, UserFacingError } from './ipc'
 import { RunnerHost } from './runner-host'
+import { phase6Handlers } from './settings-handlers'
 import { SafeStorageSecretStore } from './secret-store'
 import { runSecretsHelper } from './secrets-helper'
 
@@ -75,6 +75,8 @@ async function main(): Promise<void> {
     if (win && !win.isDestroyed()) win.webContents.send(channel, payload)
   }
 
+  const importWaiters = new Map<number, (r: IpcOutput<'images:import'>) => void>()
+  let nextImportId = 1
   const concurrency = getSetting(handle, SETTING_KEYS.concurrency, z.number().int().min(1).max(8), DEFAULTS.concurrency)
   const runner = new RunnerHost({
     dataDir: dataRoot,
@@ -85,6 +87,12 @@ async function main(): Promise<void> {
     log,
     onMessage: (m) => {
       if (m.type === 'job-changed') broadcast('jobs:changed', { jobId: m.jobId })
+      else if (m.type === 'import-progress') broadcast('images:importProgress', { done: m.done, file: path.basename(m.file), status: m.status, reason: m.reason })
+      else if (m.type === 'import-done') {
+        const w = importWaiters.get(m.reqId)
+        importWaiters.delete(m.reqId)
+        w?.({ ok: !m.error, imported: m.imported, updated: m.updated, rejected: m.rejected, quarantined: m.quarantined, message: m.error })
+      }
       else if (m.type === 'get-secret') {
         // chave vai só para o runner (utilityProcess), nunca para o renderer
         void secretStore
@@ -124,7 +132,18 @@ async function main(): Promise<void> {
 
   registerIpc(
     {
-      'channels:list': () => listChannels(handle).map((c) => ({ id: c.id, name: c.name, niche: c.niche, language: c.language as 'pt-BR' | 'es' | 'en' })),
+      ...phase6Handlers({
+        handle,
+        paths,
+        log,
+        secrets: secretStore,
+        providers,
+        runner,
+        window: () => win,
+        broadcast,
+        importWaiters,
+        nextImportId: () => nextImportId++,
+      }),
       'videos:list': ({ onlyDone }) => listVideoViews(handle, { onlyDone }),
       'videos:estimate': async (req) => {
         try {

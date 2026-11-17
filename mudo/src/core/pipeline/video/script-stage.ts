@@ -1,6 +1,7 @@
 import { and, desc, eq, isNotNull, ne } from 'drizzle-orm'
 import fs from 'node:fs'
 import { randomUUID } from 'node:crypto'
+import { z } from 'zod'
 import { acts, videos } from '../../db/schema'
 import { writeFileAtomic } from '../../paths'
 import { buildReviewPrompt, reviewJsonSchema, reviewSchema, type ReviewIssue } from '../../prompts/review'
@@ -17,6 +18,8 @@ import {
 import { callWithFallback } from '../../providers/call'
 import { stripJsonFences, type LlmOutput, type LlmProvider } from '../../providers/types'
 import { JobError, NeedsInputError } from '../../queue/errors'
+import { getSetting } from '../../settings'
+import { DEFAULT_MAX_SIMILARITY, scriptSimilarity } from '../../similarity'
 import { targetWords } from '../../videos'
 import { loadActs, preset, readScript, updateVideo, writeScript, type VideoJobState } from './state'
 
@@ -48,6 +51,26 @@ function saveActs(st: VideoJobState, list: Act[]): void {
       db.db.insert(acts).values({ id: randomUUID(), videoId: st.video.id, n: a.n, heading: a.heading, text: a.text }).run()
     }
   })()
+}
+
+/** Roteiro mais parecido entre os últimos 10 do canal. */
+function mostSimilarRecent(st: VideoJobState, text: string): { title: string; score: number } | null {
+  const db = st.ctx.db
+  const recent = db.db
+    .select({ id: videos.id, title: videos.title, theme: videos.theme })
+    .from(videos)
+    .where(and(eq(videos.channelId, st.channel.id), ne(videos.id, st.video.id)))
+    .orderBy(desc(videos.createdAt))
+    .limit(10)
+    .all()
+  let best: { title: string; score: number } | null = null
+  for (const v of recent) {
+    const other = db.db.select({ text: acts.text }).from(acts).where(eq(acts.videoId, v.id)).all()
+    if (other.length === 0) continue
+    const score = scriptSimilarity(text, other.map((o) => o.text).join(' '))
+    if (!best || score > best.score) best = { title: v.title ?? v.theme, score }
+  }
+  return best
 }
 
 /** 8.1 — roteiro com JSON validado por zod; 1 retry com o erro; depois SCRIPT_SCHEMA. */
@@ -170,6 +193,20 @@ export async function reviewStage(st: VideoJobState): Promise<void> {
       } else {
         ctx.log.warn({ problems }, 'revisão proposta descartada (fora das regras)')
       }
+    }
+  }
+
+  // seção 10: não reaproveitar a estrutura dos últimos 10 roteiros do canal
+  if (approved) {
+    const similar = mostSimilarRecent(st, script.acts.map((a) => a.text).join(' '))
+    const limit = getSetting(ctx.db, 'review.maxSimilarity', z.number().min(0).max(1), DEFAULT_MAX_SIMILARITY)
+    if (similar && similar.score > limit) {
+      approved = false
+      issues.push({
+        kind: 'repetition',
+        act: null,
+        note: `Estrutura muito parecida com o vídeo "${similar.title}" do mesmo canal (${Math.round(similar.score * 100)}% de semelhança). Reescreva as aberturas e a sequência de frases.`,
+      })
     }
   }
 

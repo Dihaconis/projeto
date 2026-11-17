@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { mudo } from '@/lib/bridge'
 import { AI_PUBLISH_NOTICE, formatDate, formatDuration, formatMoney } from '@/lib/utils'
+import { QuotaMeter } from './SettingsScreen'
 
 type Load = { status: 'loading' } | { status: 'error'; message: string } | { status: 'ok'; videos: VideoView[] }
 
@@ -43,8 +44,13 @@ export function LibraryScreen() {
   return (
     <div className="flex h-full flex-col">
       <header className="border-b border-border px-5 py-3">
-        <h1 className="text-[15px] font-semibold">Biblioteca</h1>
-        <p className="text-xs text-muted-foreground">Vídeos prontos para publicar.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-[15px] font-semibold">Biblioteca</h1>
+            <p className="text-xs text-muted-foreground">Vídeos prontos para publicar.</p>
+          </div>
+          <QuotaMeter compact />
+        </div>
       </header>
       <div className="flex min-h-0 flex-1">
         <div className="min-h-0 flex-1 overflow-auto p-5">

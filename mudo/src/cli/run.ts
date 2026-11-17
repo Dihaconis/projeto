@@ -18,6 +18,7 @@ import {
   listVideos,
   migrateDatabase,
   nullLogger,
+  quotaStatus,
   openDatabase,
   setSetting,
   type DbHandle,
@@ -30,6 +31,7 @@ import { importFolder, importImageFile, listImages, setImageLicense, type Import
 import { importMusic, listMusic, MUSIC_LICENSES } from '../core/media/music'
 import { SECRET_IDS, secretIdSchema, SECRET_LABELS } from '../core/secrets'
 import { DURATION, LANGUAGES, LIBRARY_LICENSES, MUSIC_MOODS, STAGE_LABELS, TERMINAL_STATES, type JobState } from '../shared/enums'
+import { PLAN_IDS } from '../shared/plans'
 import type { SecretsAdmin } from './helper-secrets'
 
 /** Códigos de saída estáveis (seção 13). */
@@ -73,6 +75,7 @@ const USAGE = `Uso:
   mudo keys set <${SECRET_IDS.join('|')}>      (lê a chave do stdin)
   mudo keys list | mudo keys delete <id>
   mudo config set <chave> <valor>
+  mudo quota [--json]
 
 Saída: 0 ok · 1 erro · 2 entrada inválida · 3 cota`
 
@@ -95,6 +98,8 @@ const CONFIG_KEYS: Record<string, z.ZodType> = {
   'images.localThreshold': z.coerce.number().min(-1).max(1),
   'images.stockThreshold': z.coerce.number().min(-1).max(1),
   'assemble.parallelSegments': z.coerce.number().int().min(1).max(8),
+  'review.maxSimilarity': z.coerce.number().min(0).max(1),
+  'plan.id': z.enum(PLAN_IDS),
   'speech.wpm.pt-BR': z.coerce.number().int().min(80).max(260),
   'speech.wpm.es': z.coerce.number().int().min(80).max(260),
   'speech.wpm.en': z.coerce.number().int().min(80).max(260),
@@ -197,6 +202,8 @@ async function dispatch(argv: string[], deps: CliDeps): Promise<number> {
       return keys(sub, rest, deps)
     case 'config':
       return config(sub, rest, deps)
+    case 'quota':
+      return quotaCmd([sub, ...rest].filter((x): x is string => x !== undefined), deps)
     default:
       throw new UsageError(`comando desconhecido: ${cmd}`)
   }
@@ -617,4 +624,21 @@ async function musicCmd(sub: string | undefined, rest: string[], deps: CliDeps):
     }
   }
   throw new UsageError('use: mudo music import|list')
+}
+
+async function quotaCmd(args: string[], deps: CliDeps): Promise<number> {
+  const { values } = parse(args, { json: { type: 'boolean', default: false } })
+  const h = open(deps)
+  try {
+    const q = quotaStatus(h)
+    const out = { planId: q.plan.id, plan: q.plan.name, month: q.month, videosUsed: q.videosUsed, videosPending: q.videosPending, videosLimit: q.videosLimit, videosRemaining: q.videosRemaining, cutsUsed: q.cutsUsed, cutsLimit: q.cutsLimit, cutsRemaining: q.cutsRemaining }
+    if (values.json) deps.io.out(`${JSON.stringify(out)}\n`)
+    else
+      deps.io.out(
+        `Plano ${q.plan.name} · ${q.month}\nVídeos: ${q.videosUsed}${q.videosLimit === null ? ' (sem limite)' : `/${q.videosLimit} · restam ${q.videosRemaining}`}${q.videosPending ? ` · ${q.videosPending} em produção` : ''}\nCortes: ${q.cutsUsed}${q.cutsLimit === null ? ' (sem limite)' : `/${q.cutsLimit} · restam ${q.cutsRemaining}`}\n`,
+      )
+    return EXIT.ok
+  } finally {
+    h.close()
+  }
 }

@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { consumeQuota } from '../../quota'
 import type { JobHandler } from '../context'
 import { assembleStage } from './assemble-stage'
 import { imagesStage } from './images-stage'
@@ -19,6 +20,12 @@ export const videoHandler: JobHandler = async (ctx) => {
   await imagesStage(st)
   await ttsStage(st)
   await assembleStage(st)
+  // consumo da cota só quando o vídeo fica pronto (seção 12)
+  if (!st.cp.quotaConsumed) {
+    st.cp.quotaConsumed = true
+    st.save()
+    consumeQuota(ctx.db, 'video')
+  }
   // temporários só fazem sentido durante o job
   fs.rmSync(ctx.tmpDir, { recursive: true, force: true })
 }

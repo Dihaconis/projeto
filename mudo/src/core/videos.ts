@@ -10,6 +10,7 @@ import { buildScriptPrompt, scriptJsonSchema } from './prompts/script'
 import type { ProviderSource } from './providers/registry'
 import { JobQueue, type JobRow } from './queue/queue'
 import { JobError } from './queue/errors'
+import { assertQuota } from './quota'
 import { getSetting } from './settings'
 
 export type VideoRow = typeof videos.$inferSelect
@@ -48,6 +49,7 @@ export function createVideoJob(h: DbHandle, req: VideoRequest): { video: VideoRo
   const r = resolve(h, req)
   const payload: VideoPayload = { wpm: wpmFor(h, r.language) }
   return h.sqlite.transaction(() => {
+    assertQuota(h, 'video')
     const now = Date.now()
     const video = h.db
       .insert(videos)

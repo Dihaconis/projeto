@@ -57,7 +57,8 @@
     "cli": "node scripts/cli.mjs",
     "models": "node scripts/fetch-models.mjs",
     "postinstall": "node scripts/fetch-models.mjs",
-    "binaries": "node scripts/fetch-binaries.mjs"
+    "binaries": "node scripts/fetch-binaries.mjs",
+    "legal": "node scripts/third-party.mjs"
   },
   "engines": {
     "node": ">=22"

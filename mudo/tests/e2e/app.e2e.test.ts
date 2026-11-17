@@ -29,10 +29,10 @@ function cleanEnv(extra: Record<string, string>): Record<string, string> {
   return { ...env, ...extra }
 }
 
-async function launch(dataDir: string): Promise<{ app: ElectronApplication; page: Page }> {
-  const args = [APP_DIR]
+async function launch(dataDir: string, extraArgs: string[] = []): Promise<{ app: ElectronApplication; page: Page }> {
+  const args = [APP_DIR, ...extraArgs]
   if (process.platform === 'linux') args.push('--no-sandbox') // contêiner como root
-  const app = await electron.launch({ executablePath: ELECTRON, args, env: cleanEnv({ MUDO_DATA_DIR: dataDir, MUDO_ORPHAN_MS: '2000' }) })
+  const app = await electron.launch({ executablePath: ELECTRON, args, env: cleanEnv({ MUDO_DATA_DIR: dataDir, MUDO_ORPHAN_MS: '2000', ...(process.env.MUDO_ALLOW_BASIC_SECRET_STORE ? { MUDO_ALLOW_BASIC_SECRET_STORE: '1' } : {}) }) })
   apps.push(app)
   const page = await app.firstWindow()
   await page.locator('[data-testid="runner-status"][data-state="running"]').waitFor({ timeout: 30_000 })
@@ -40,18 +40,17 @@ async function launch(dataDir: string): Promise<{ app: ElectronApplication; page
 }
 
 describe('app Electron', () => {
-  it('Meus Vídeos: sem canal mostra o que fazer; com canal, Gerar enfileira, custo estimado aparece e sem chave o vídeo pede ação; cancelar pela UI', async () => {
+  it('Primeiro uso → Meus Vídeos: Gerar enfileira, custo estimado aparece e sem chave o vídeo pede ação; cancelar pela UI', async () => {
     const root = tempRoot('mudo e2e ação ')
     roots.push(root)
-    const first = await launch(root)
-    await first.page.getByTestId('no-channels').waitFor()
-    await first.app.close()
-    apps = apps.filter((a) => a !== first.app)
-
-    const h = openDatabase(dataPaths(root).db)
-    createChannel(h, { name: 'Canal Ciência', niche: 'ciência', language: 'pt-BR' })
-    h.close()
+    // primeiro uso: assistente curto (chaves + primeiro canal) e depois Meus Vídeos
     const { page } = await launch(root)
+    await page.getByTestId('onboarding').waitFor()
+    await page.getByTestId('onboarding-next').click()
+    await page.getByTestId('ch-name').fill('Canal Ciência')
+    await page.getByTestId('ch-niche').fill('ciência do dia a dia')
+    await page.getByTestId('onboarding-finish').click()
+    await page.getByTestId('theme').waitFor()
     await page.getByTestId('theme').fill('Por que o céu é azul')
     await expect.poll(async () => page.getByTestId('estimate').textContent(), { timeout: 10_000 }).toContain('Sem provedor configurado')
     await page.getByTestId('generate').click()
@@ -182,5 +181,50 @@ describe('app Electron', () => {
     const db = openDatabase(path.join(root, 'mudo.db'))
     expect(db.sqlite.prepare('SELECT embedding_model FROM images').get()).toEqual({ embedding_model: 'clip:Xenova/clip-vit-base-patch32:q8' })
     db.close()
+  })
+
+  it('Canais, Configurações (chave cifrada + testar conexão) e Licenças com exportação CSV', async () => {
+    const root = tempRoot('mudo e2e telas ')
+    roots.push(root)
+    const { videoId } = await seedVideo(root, 'done')
+    process.env.MUDO_ALLOW_BASIC_SECRET_STORE = '1'
+    const { app, page } = await launch(root, process.platform === 'linux' ? ['--password-store=basic'] : [])
+    delete process.env.MUDO_ALLOW_BASIC_SECRET_STORE
+
+    // Canais: criar e ver na lista
+    await page.getByTestId('nav-channels').click()
+    await page.getByTestId('new-channel').click()
+    await page.getByTestId('ch-name').fill('História Rápida')
+    await page.getByTestId('ch-niche').fill('história')
+    await page.getByTestId('save-channel').click()
+    await expect.poll(() => page.getByTestId('channel-card').count()).toBe(2)
+
+    // Configurações: guardar chave (some do campo), testar conexão sem rede para o provedor
+    await page.getByTestId('nav-settings').click()
+    const row = page.getByTestId('key-pexels')
+    await row.getByRole('textbox').fill('chave-de-teste-pexels-123')
+    await row.getByRole('button', { name: 'Salvar' }).click()
+    await expect.poll(() => row.getByRole('textbox').inputValue()).toBe('')
+    await row.getByRole('button', { name: 'Testar conexão' }).click()
+    await expect.poll(() => row.textContent(), { timeout: 30_000 }).toMatch(/recusada|conectar|HTTP|Sem resposta/)
+    const cfg = fs.readFileSync(path.join(root, 'config.json'), 'utf8')
+    expect(cfg).not.toContain('chave-de-teste-pexels-123')
+    expect(await page.content()).not.toContain('chave-de-teste-pexels-123')
+
+    // Licenças: tabela do vídeo e CSV (diálogo nativo substituído só neste teste)
+    await page.getByTestId('nav-licenses').click()
+    await page.getByTestId('licenses-table').waitFor()
+    await expect(page.getByTestId('licenses-table').textContent()).resolves.toContain('Pexels')
+    const csvPath = path.join(root, 'licencas.csv')
+    await app.evaluate(({ dialog }, file) => {
+      dialog.showSaveDialog = (async () => ({ canceled: false, filePath: file })) as typeof dialog.showSaveDialog
+    }, csvPath)
+    await page.getByRole('button', { name: 'Exportar CSV' }).click()
+    await expect.poll(() => fs.existsSync(csvPath)).toBe(true)
+    expect(fs.readFileSync(csvPath, 'utf8')).toContain(videoId)
+
+    // Biblioteca mostra o medidor de cota
+    await page.getByTestId('nav-library').click()
+    await expect(page.getByTestId('quota-meter').textContent()).resolves.toContain('Ilimitado')
   })
 })

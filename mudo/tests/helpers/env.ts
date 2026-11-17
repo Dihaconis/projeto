@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { dataPaths, ensureDataDirs, migrateDatabase, openDatabase, type DataPaths, type DbHandle } from '../../src/core'
+import { dataPaths, ensureDataDirs, migrateDatabase, openDatabase, setSetting, type DataPaths, type DbHandle } from '../../src/core'
 
 export const MIGRATIONS_DIR = path.resolve(__dirname, '../../migrations')
 
@@ -22,6 +22,9 @@ export function makeEnv(): TestEnv {
   ensureDataDirs(paths)
   const handle = openDatabase(paths.db)
   migrateDatabase(handle, { migrationsDir: MIGRATIONS_DIR, backupDir: paths.backups })
+  // as fixtures devolvem sempre o mesmo roteiro: a checagem de repetição do canal (seção 10)
+  // é testada à parte; aqui fica desligada para gerar vários vídeos no mesmo canal
+  setSetting(handle, 'review.maxSimilarity', 1)
   return {
     paths,
     handle,

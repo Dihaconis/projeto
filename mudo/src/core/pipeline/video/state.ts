@@ -29,6 +29,8 @@ export const videoCheckpointSchema = z.object({
   /** Trilha escolhida e áudio final (mix + loudnorm) pronto. */
   audio: z.object({ musicId: z.string() }).optional(),
   output: z.object({ mp4: z.string(), txt: z.string() }).optional(),
+  /** Cota do mês já debitada por este vídeo (débito só uma vez). */
+  quotaConsumed: z.literal(true).optional(),
 })
 export type VideoCheckpoint = z.infer<typeof videoCheckpointSchema>
 
