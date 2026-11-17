@@ -2,9 +2,10 @@
 
 Gerador local de vídeo narrado para canal sem rosto (Windows). Electron + React + TypeScript + SQLite.
 
-> **Estado: Fase 4.** A CLI gera o vídeo completo: imagem licenciada por cena, movimento,
-> legenda queimada com a palavra atual destacada, trilha com ducking, loudnorm −14 LUFS, cartela de
-> créditos e 2 thumbnails. As telas de produto chegam nas Fases 5–6.
+> **Estado: Fase 5.** O app tem as telas **Meus Vídeos** e **Biblioteca** ligadas à fila real, e a
+> CLI gera o vídeo completo: imagem licenciada por cena, movimento, legenda queimada com a palavra
+> atual destacada, trilha com ducking, loudnorm −14 LUFS, cartela de créditos e 2 thumbnails.
+> Canais, Licenças, Configurações e cota chegam na Fase 6.
 
 ## Requisitos de desenvolvimento
 
@@ -138,6 +139,21 @@ Faixa de duração: alvos de 6–9 min usam a faixa fechada do briefing. A CLI a
 - **Embeddings:** CLIP local (`Xenova/clip-vit-base-patch32`, q8), offline, em revisão fixa. Os
   arquivos e seus SHA-256 estão em `scripts/models.lock.json` e o app nunca baixa nada em execução.
   Alternativa: OpenAI (só texto), com `config set embeddings.provider openai`.
+
+### Telas (Fase 5)
+
+- **Meus Vídeos:**
+  - Formulário com tema, canal, idioma (padrão do canal) e duração de 6 a 9 min.
+  - Custo estimado ao vivo, antes de enfileirar.
+  - Fila com etapa, progresso, tempo decorrido e as ações cancelar, retomar e editar roteiro. A
+    edição fica disponível em "aguardando você", com os pontos da revisão ao lado.
+  - Ao terminar, aviso para marcar o conteúdo como sintético na plataforma.
+- **Biblioteca:**
+  - Grade com thumbnail, duração, data e custo.
+  - Player, abrir pasta, copiar título e descrição, e apagar com confirmação.
+  - Vídeo e thumbnails chegam ao renderer pelo protocolo só-leitura `mudo-media://`; o renderer
+    nunca vê caminhos de disco.
+- Toda tela tem estados de vazio, carregando, erro (com "Abrir logs") e sucesso.
 
 ### Montagem (Fase 4)
 

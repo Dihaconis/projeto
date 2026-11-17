@@ -1,23 +1,32 @@
-import { app, BrowserWindow, shell, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, clipboard, net, protocol, shell, type IpcMainInvokeEvent } from 'electron'
 import fs from 'node:fs'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { z } from 'zod'
 import {
+  JobError,
   JobQueue,
   SETTING_KEYS,
   cleanupJobTemp,
+  configuredProviders,
   createLogger,
+  createVideoJob,
   dataPaths,
+  deleteVideo,
   ensureDataDirs,
+  estimateVideoCost,
+  getScriptForEdit,
   getSetting,
-  jobErrorSchema,
-  listVideos,
+  getVideo,
+  listChannels,
+  listVideoViews,
   migrateDatabase,
   openDatabase,
-  type JobRow,
+  saveEditedScript,
+  videoMediaPath,
 } from '../core'
 import { DEFAULTS } from '../shared/enums'
-import type { JobView, RunnerStatus } from '../shared/ipc'
+import type { RunnerStatus } from '../shared/ipc'
 import { registerIpc, UserFacingError } from './ipc'
 import { RunnerHost } from './runner-host'
 import { SafeStorageSecretStore } from './secret-store'
@@ -44,26 +53,10 @@ function migrationsDir(): string {
   return app.isPackaged ? path.join(process.resourcesPath, 'migrations') : path.join(app.getAppPath(), 'migrations')
 }
 
-function toView(j: JobRow, v: { title: string | null; theme: string } | undefined): JobView {
-  const parsedErr = jobErrorSchema.safeParse(j.lastError)
-  const err = parsedErr.success ? parsedErr.data : null
-  return {
-    id: j.id,
-    kind: j.kind,
-    state: j.state,
-    stage: j.stage,
-    progress: j.progress,
-    attempt: j.attempt,
-    maxAttempts: j.maxAttempts,
-    lastError: err ? { code: err.code, message: err.message } : null,
-    stageTimings: (j.stageTimings ?? {}) as Record<string, number>,
-    createdAt: j.createdAt,
-    updatedAt: j.updatedAt,
-    finishedAt: j.finishedAt,
-    title: v?.title ?? null,
-    theme: v?.theme ?? null,
-  }
-}
+/** Protocolo só-leitura para o player e as thumbnails: o renderer nunca vê caminhos de disco. */
+protocol.registerSchemesAsPrivileged([{ scheme: 'mudo-media', privileges: { standard: true, secure: true, stream: true, supportFetchAPI: true } }])
+
+const modelsDir = () => (app.isPackaged ? path.join(process.resourcesPath, 'models') : path.join(app.getAppPath(), 'resources', 'models'))
 
 async function main(): Promise<void> {
   const log = await createLogger(paths.logs, 'main')
@@ -86,7 +79,7 @@ async function main(): Promise<void> {
   const runner = new RunnerHost({
     dataDir: dataRoot,
     binDir: app.isPackaged ? path.join(process.resourcesPath, 'bin') : null,
-    modelsDir: app.isPackaged ? path.join(process.resourcesPath, 'models') : path.join(app.getAppPath(), 'resources', 'models'),
+    modelsDir: modelsDir(),
     concurrency,
     orphanAfterMs,
     log,
@@ -103,31 +96,94 @@ async function main(): Promise<void> {
     onStatus: (s: RunnerStatus) => broadcast('runner:status', s),
   })
 
+  const providers = configuredProviders(handle, secretStore, { modelsDir: modelsDir() })
+  const jobOfVideo = (videoId: string) => {
+    const j = queue.list(5000).find((x) => x.videoId === videoId)
+    if (!j) throw new UserFacingError('Vídeo não encontrado.')
+    return j
+  }
+  const userError = (fn: () => unknown) => {
+    try {
+      return fn()
+    } catch (err) {
+      if (err instanceof JobError && err.code === 'INVALID_INPUT') throw new UserFacingError(err.message)
+      throw err
+    }
+  }
+
+  protocol.handle('mudo-media', (req) => {
+    const u = new URL(req.url)
+    const kind = z.enum(['video', 'thumb', 'thumb2']).safeParse(u.hostname)
+    const id = z.uuid().safeParse(u.pathname.replace(/^\//, ''))
+    const file = kind.success && id.success ? videoMediaPath(handle, id.data, kind.data) : null
+    if (!file) return new Response('não encontrado', { status: 404 })
+    return net.fetch(pathToFileURL(file).toString(), { headers: req.headers })
+  })
+
   const isTrustedSender = (e: IpcMainInvokeEvent) => win !== null && e.sender === win.webContents && e.senderFrame === win.webContents.mainFrame
 
   registerIpc(
     {
-      'jobs:list': () => {
-        const vids = new Map(listVideos(handle).map((v) => [v.id, v]))
-        return queue.list().map((j) => toView(j, j.videoId ? vids.get(j.videoId) : undefined))
+      'channels:list': () => listChannels(handle).map((c) => ({ id: c.id, name: c.name, niche: c.niche, language: c.language as 'pt-BR' | 'es' | 'en' })),
+      'videos:list': ({ onlyDone }) => listVideoViews(handle, { onlyDone }),
+      'videos:estimate': async (req) => {
+        try {
+          return await estimateVideoCost(handle, providers, req)
+        } catch (err) {
+          if (err instanceof JobError && err.code === 'INVALID_INPUT') throw new UserFacingError(err.message)
+          throw err
+        }
       },
-      'jobs:cancel': ({ id }) => {
-        const r = queue.cancel(id)
-        if (!r.job) throw new UserFacingError('Job não encontrado.')
-        if (!r.ok) return { ok: false, message: 'Este job não pode mais ser cancelado.' }
-        if (r.wasRunning) runner.send({ type: 'check', jobId: id })
-        else cleanupJobTemp(paths, r.job)
-        log.info({ jobId: id, wasRunning: r.wasRunning }, 'job cancelado')
-        broadcast('jobs:changed', { jobId: id })
+      'videos:create': (req) => {
+        const { video, job } = userError(() => createVideoJob(handle, req)) as ReturnType<typeof createVideoJob>
+        log.info({ videoId: video.id, jobId: job.id }, 'vídeo enfileirado pela interface')
+        runner.send({ type: 'poke' })
+        broadcast('jobs:changed', { jobId: job.id })
+        return { videoId: video.id, jobId: job.id }
+      },
+      'videos:cancel': ({ id }) => {
+        const j = jobOfVideo(id)
+        const r = queue.cancel(j.id)
+        if (!r.ok) return { ok: false, message: 'Este vídeo não pode mais ser cancelado.' }
+        if (r.wasRunning) runner.send({ type: 'check', jobId: j.id })
+        else if (r.job) cleanupJobTemp(paths, r.job)
+        log.info({ videoId: id, wasRunning: r.wasRunning }, 'vídeo cancelado')
+        broadcast('jobs:changed', { jobId: j.id })
         return { ok: true }
       },
-      'jobs:resume': ({ id }) => {
-        const r = queue.resume(id)
-        if (!r.job) throw new UserFacingError('Job não encontrado.')
-        if (!r.ok) return { ok: false, message: 'Só é possível retomar jobs falhos, cancelados ou aguardando ação.' }
-        log.info({ jobId: id }, 'job retomado')
+      'videos:resume': ({ id }) => {
+        const j = jobOfVideo(id)
+        const r = queue.resume(j.id)
+        if (!r.ok) return { ok: false, message: 'Só é possível retomar vídeos com falha, cancelados ou aguardando você.' }
+        log.info({ videoId: id }, 'vídeo retomado')
         runner.send({ type: 'poke' })
-        broadcast('jobs:changed', { jobId: id })
+        broadcast('jobs:changed', { jobId: j.id })
+        return { ok: true }
+      },
+      'videos:getScript': ({ id }) => userError(() => getScriptForEdit(handle, paths, id)) as ReturnType<typeof getScriptForEdit>,
+      'videos:saveScript': ({ id, acts }) => {
+        const r = userError(() => saveEditedScript(handle, paths, id, acts)) as ReturnType<typeof saveEditedScript>
+        log.info({ videoId: id, acts: acts.length }, 'roteiro editado pelo usuário')
+        broadcast('jobs:changed', { jobId: null })
+        return r
+      },
+      'videos:delete': ({ id }) => {
+        userError(() => deleteVideo(handle, paths, id))
+        log.info({ videoId: id }, 'vídeo apagado')
+        broadcast('jobs:changed', { jobId: null })
+        return { ok: true }
+      },
+      'videos:openFolder': ({ id }) => {
+        const v = getVideo(handle, id)
+        if (!v?.outputPath || !fs.existsSync(v.outputPath)) return { ok: false, message: 'O arquivo do vídeo não está mais na pasta de saída.' }
+        shell.showItemInFolder(v.outputPath)
+        return { ok: true }
+      },
+      'videos:copy': ({ id, field }) => {
+        const v = getVideo(handle, id)
+        const text = field === 'title' ? v?.title : v?.description
+        if (!text) return { ok: false, message: 'Ainda não há texto para copiar.' }
+        clipboard.writeText(text)
         return { ok: true }
       },
       'runner:status': () => runner.getStatus(),

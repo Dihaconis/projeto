@@ -1,6 +1,7 @@
 import type { Logger } from 'pino'
 import type { DbHandle } from '../db'
 import { providerLog } from '../db/schema'
+import { STAGE_LABELS, type Stage } from '../../shared/enums'
 import { JobError, NeedsInputError } from '../queue/errors'
 import { ProviderRefusalError, ProviderTechnicalError, type Provider } from './types'
 
@@ -48,6 +49,8 @@ export const abortableSleep = (ms: number, signal: AbortSignal) =>
     signal.addEventListener('abort', onAbort, { once: true })
   })
 
+const stageName = (s: string) => STAGE_LABELS[s as Stage] ?? s
+
 type Meter = { model?: string; tokensIn?: number; tokensOut?: number; chars?: number; costCents?: number }
 
 /**
@@ -70,7 +73,7 @@ export async function callWithFallback<P extends AnyProvider>(
   if (providers.length === 0) {
     throw new NeedsInputError(
       'MISSING_KEY',
-      `Nenhum provedor configurado para a etapa "${ctx.stage}". Adicione uma chave de API em Configurações (ou "mudo keys set") e retome o vídeo.`,
+      `Nenhum provedor configurado para a etapa "${stageName(ctx.stage)}". Adicione uma chave de API em Configurações (ou "mudo keys set") e retome o vídeo.`,
     )
   }
   const policy = ctx.policy ?? DEFAULT_POLICY
@@ -94,7 +97,7 @@ export async function callWithFallback<P extends AnyProvider>(
           ctx.log.warn({ provider: p.id, stage: ctx.stage, category: err.category }, 'recusa por política do provedor')
           throw new NeedsInputError(
             'PROVIDER_REFUSAL',
-            `${p.id} recusou o pedido na etapa "${ctx.stage}": ${err.message} Edite o tema/roteiro ou escolha outro provedor e retome.`,
+            `${p.id} recusou o pedido na etapa "${stageName(ctx.stage)}": ${err.message} Edite o tema/roteiro ou escolha outro provedor e retome.`,
             { provider: p.id, category: err.category ?? null },
           )
         }
@@ -114,7 +117,7 @@ export async function callWithFallback<P extends AnyProvider>(
   }
   throw new JobError(
     'PROVIDER_UNAVAILABLE',
-    `Nenhum provedor respondeu na etapa "${ctx.stage}": ${failures.join(' | ')}`,
+    `Nenhum provedor respondeu na etapa "${stageName(ctx.stage)}": ${failures.join(' | ')}`,
     true,
   )
 }

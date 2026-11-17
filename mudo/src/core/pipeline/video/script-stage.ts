@@ -151,7 +151,9 @@ export async function reviewStage(st: VideoJobState): Promise<void> {
       issues.push({ kind: 'coherence', act: null, note: 'A revisão automática devolveu uma resposta inválida.' })
       continue
     }
-    issues.push(...parsed.data.issues)
+    for (const is of parsed.data.issues) {
+      if (!issues.some((x) => x.kind === is.kind && x.act === is.act && x.note === is.note)) issues.push(is)
+    }
     if (parsed.data.approved) {
       approved = true
       break

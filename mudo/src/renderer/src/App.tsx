@@ -1,10 +1,11 @@
-import { FileText, ListOrdered } from 'lucide-react'
+import { FileText, Film, LibraryBig } from 'lucide-react'
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import type { RunnerStatus } from '../../shared/ipc'
 import { Button } from '@/components/ui/button'
 import { mudo } from '@/lib/bridge'
 import { cn } from '@/lib/utils'
-import { QueueScreen } from '@/screens/QueueScreen'
+import { LibraryScreen } from '@/screens/LibraryScreen'
+import { VideosScreen } from '@/screens/VideosScreen'
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   override state = { error: null as string | null }
@@ -28,7 +29,14 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: string |
   }
 }
 
+type Screen = 'videos' | 'library'
+const NAV: Array<{ id: Screen; label: string; icon: typeof Film }> = [
+  { id: 'videos', label: 'Meus Vídeos', icon: Film },
+  { id: 'library', label: 'Biblioteca', icon: LibraryBig },
+]
+
 export function App() {
+  const [screen, setScreen] = useState<Screen>('videos')
   const [runner, setRunner] = useState<RunnerStatus | null>(null)
   const [version, setVersion] = useState('')
 
@@ -45,9 +53,17 @@ export function App() {
       <aside className="flex w-52 shrink-0 flex-col border-r border-border bg-card">
         <div className="px-4 py-4 text-[15px] font-bold tracking-[0.2em]">MUDO</div>
         <nav className="flex-1 px-2">
-          <a className="flex items-center gap-2 rounded-md bg-muted px-2.5 py-1.5 text-[13px]" aria-current="page">
-            <ListOrdered className="size-4" /> Fila de jobs
-          </a>
+          {NAV.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              data-testid={`nav-${id}`}
+              aria-current={screen === id ? 'page' : undefined}
+              onClick={() => setScreen(id)}
+              className={cn('mb-0.5 flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-[13px]', screen === id ? 'bg-muted text-foreground' : 'text-muted-foreground hover:bg-muted/60')}
+            >
+              <Icon className="size-4" /> {label}
+            </button>
+          ))}
         </nav>
         <div className="space-y-1 border-t border-border px-4 py-3 text-[11px] text-muted-foreground">
           <div className="flex items-center gap-1.5" data-testid="runner-status" data-state={runner?.state ?? 'unknown'}>
@@ -57,9 +73,14 @@ export function App() {
           <div>v{version}</div>
         </div>
       </aside>
-      <main className="min-w-0 flex-1">
+      <main className="flex min-w-0 flex-1 flex-col">
         <ErrorBoundary>
-          <QueueScreen runner={runner} />
+          {runner && runner.state !== 'running' && (
+            <div className="border-b border-warning/30 bg-warning/10 px-5 py-2 text-xs text-warning">
+              {runner.message ?? (runner.state === 'starting' ? 'Iniciando o processo de geração…' : 'Processo de geração parado.')}
+            </div>
+          )}
+          <div className="min-h-0 flex-1">{screen === 'videos' ? <VideosScreen onOpenLibrary={() => setScreen('library')} /> : <LibraryScreen />}</div>
         </ErrorBoundary>
       </main>
     </div>

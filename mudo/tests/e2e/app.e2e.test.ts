@@ -8,8 +8,9 @@ import path from 'node:path'
 import { _electron as electron, type ElectronApplication, type Page } from 'playwright'
 import { afterEach, describe, expect, it } from 'vitest'
 import { helperSecrets } from '../../src/cli/helper-secrets'
-import { createChannel, createVideoJob, dataPaths, migrateDatabase, openDatabase } from '../../src/core'
-import { MIGRATIONS_DIR, tempRoot } from '../helpers/env'
+import { createChannel, dataPaths, openDatabase } from '../../src/core'
+import { tempRoot } from '../helpers/env'
+import { seedVideo } from './seed'
 
 const APP_DIR = path.resolve(__dirname, '../..')
 const ELECTRON = require('electron') as unknown as string
@@ -39,21 +40,68 @@ async function launch(dataDir: string): Promise<{ app: ElectronApplication; page
 }
 
 describe('app Electron', () => {
-  it('runner do app pega o vídeo; sem chave → "aguardando você" com mensagem acionável; cancelar pela UI', async () => {
+  it('Meus Vídeos: sem canal mostra o que fazer; com canal, Gerar enfileira, custo estimado aparece e sem chave o vídeo pede ação; cancelar pela UI', async () => {
     const root = tempRoot('mudo e2e ação ')
     roots.push(root)
-    const h = openDatabase(dataPaths(root).db)
-    migrateDatabase(h, { migrationsDir: MIGRATIONS_DIR, backupDir: dataPaths(root).backups })
-    const ch = createChannel(h, { name: 'Canal', niche: 'ciência', language: 'pt-BR' })
-    const { job } = createVideoJob(h, { channelId: ch.id, theme: 'Por que o céu é azul', durationS: 60 })
-    h.close()
+    const first = await launch(root)
+    await first.page.getByTestId('no-channels').waitFor()
+    await first.app.close()
+    apps = apps.filter((a) => a !== first.app)
 
+    const h = openDatabase(dataPaths(root).db)
+    createChannel(h, { name: 'Canal Ciência', niche: 'ciência', language: 'pt-BR' })
+    h.close()
     const { page } = await launch(root)
-    const row = page.locator(`[data-job-id="${job.id}"][data-state="needs_input"]`)
+    await page.getByTestId('theme').fill('Por que o céu é azul')
+    await expect.poll(async () => page.getByTestId('estimate').textContent(), { timeout: 10_000 }).toContain('Sem provedor configurado')
+    await page.getByTestId('generate').click()
+    const row = page.locator('[data-testid="video-row"][data-state="needs_input"]')
     await row.waitFor({ timeout: 30_000 })
     await expect(row.textContent()).resolves.toContain('Adicione uma chave de API')
     await row.getByRole('button', { name: 'Cancelar' }).click()
-    await page.locator(`[data-job-id="${job.id}"][data-state="cancelled"]`).waitFor()
+    await page.locator('[data-testid="video-row"][data-state="cancelled"]').waitFor()
+  })
+
+  it('Biblioteca: thumbnail e player pelo protocolo mudo-media, aviso de IA, copiar título e apagar', async () => {
+    const root = tempRoot('mudo e2e biblioteca ')
+    roots.push(root)
+    const { videoId, outputPath } = await seedVideo(root, 'done')
+    const { app, page } = await launch(root)
+    await page.getByTestId('nav-library').click()
+    const card = page.locator(`[data-testid="library-card"][data-video-id="${videoId}"]`)
+    await card.waitFor()
+    await expect.poll(() => card.locator('img').evaluate((i: HTMLImageElement) => i.naturalWidth), { timeout: 10_000 }).toBe(1280)
+    await card.click()
+    const player = page.getByTestId('player')
+    await expect.poll(() => player.evaluate((v: HTMLVideoElement) => v.duration), { timeout: 15_000 }).toBeGreaterThan(50)
+    await expect(page.getByTestId('library-ai-notice').textContent()).resolves.toContain('conteúdo alterado ou sintético')
+    await page.getByTestId('copy-title').click()
+    await expect.poll(() => app.evaluate(({ clipboard }) => clipboard.readText())).toBe('Por que o céu é azul? A resposta em um minuto')
+    await page.getByTestId('delete-video').click()
+    await page.getByTestId('confirm-delete').click()
+    await card.waitFor({ state: 'detached' })
+    expect(fs.existsSync(outputPath)).toBe(false)
+  })
+
+  it('editar roteiro em "aguardando você": issues ao lado, salvar retoma a geração com o texto novo', async () => {
+    const root = tempRoot('mudo e2e roteiro ')
+    roots.push(root)
+    const { videoId } = await seedVideo(root, 'review-rejected')
+    const { page } = await launch(root)
+    const row = page.locator(`[data-testid="video-row"][data-video-id="${videoId}"][data-state="needs_input"]`)
+    await row.waitFor()
+    await row.getByTestId('edit-script').click()
+    const editor = page.getByTestId('act-editor').first()
+    await editor.waitFor()
+    await expect(page.getByRole('dialog').textContent()).resolves.toContain('Afirmação duvidosa')
+    await editor.getByRole('textbox', { name: 'Narração do ato 1' }).fill('Você já reparou que o céu muda de cor ao longo do dia? Hoje vamos entender por quê.')
+    await page.getByTestId('save-script').click()
+    await page.getByRole('dialog').waitFor({ state: 'detached' })
+    // retomou: passa da revisão (decisão humana) e, sem chave no app, para nas imagens pedindo ação
+    await page.locator(`[data-testid="video-row"][data-video-id="${videoId}"][data-stage="images"][data-state="needs_input"]`).waitFor({ timeout: 30_000 })
+    const h = openDatabase(dataPaths(root).db)
+    expect(h.sqlite.prepare('SELECT text FROM acts WHERE video_id = ? AND n = 1').get(videoId)).toEqual({ text: 'Você já reparou que o céu muda de cor ao longo do dia? Hoje vamos entender por quê.' })
+    h.close()
   })
 
   it('renderer isolado: sem Node, só a ponte tipada; entrada inválida e canal desconhecido recusados', async () => {
