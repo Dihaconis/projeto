@@ -1,4 +1,4 @@
-# Verifica a instalação do MUDO no Windows e imprime um relatório.
+﻿# Verifica a instalação do MUDO no Windows e imprime um relatório.
 # Não mostra nenhuma chave de API: só os NOMES das chaves configuradas.
 # Uso (PowerShell):  powershell -ExecutionPolicy Bypass -File verificar-instalacao.ps1
 
