@@ -5,10 +5,10 @@
     "vo": {
       "boca": {
         "centro": [
-          406,
-          506
+          404,
+          495
         ],
-        "largura": 88,
+        "largura": 84,
         "sorriso": 0.35,
         "apagar": [
           358,
