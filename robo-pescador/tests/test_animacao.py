@@ -1,4 +1,5 @@
 """Testes do desenho animado com boca sincronizada (não precisam de internet)."""
+import json
 import wave
 from pathlib import Path
 
@@ -88,3 +89,56 @@ def test_rhubarb_e_video_vertical(tmp_path):
     video = render.renderizar(cena, audio, tmp_path / "v.mp4", progresso=lambda _: None)
     assert abs(midia.duracao(video) - total) < 0.3
     assert midia.tem_audio(video)
+
+
+def test_dialogista_valida_e_corrige(tmp_path):
+    from robo.animacao import dialogista
+    from robo.llm import ErroLLM
+    r = dialogista.validar({"titulo": "x" * 150, "falas": [
+        {"quem": "lucas", "texto": "  Vô,   é verdade? ", "expressao": "bravo"},
+        {"quem": "vo", "texto": "É sim.", "expressao": "feliz", "reacao": "surpreso"},
+        {"quem": "lucas", "texto": "palavra " * 60},
+        {"quem": "vo", "texto": "Então pega o remo."}]}, {"vo", "lucas"})
+    assert len(r["titulo"]) == 100
+    assert r["falas"][0]["texto"] == "Vô, é verdade?"
+    assert r["falas"][0]["expressao"] == "neutro"                       # expressão desconhecida vira neutro
+    assert len(r["falas"][2]["texto"].split()) == 40
+    with pytest.raises(ErroLLM):
+        dialogista.validar({"falas": [{"quem": "bisavo", "texto": "oi"}] * 4}, {"vo", "lucas"})
+
+
+def test_fila_de_dialogos_pega_o_mais_antigo_e_pula_a_prova(tmp_path, monkeypatch):
+    from robo.animacao import dialogista
+    from robo.config import Config
+    fila = tmp_path / "roteiros_animados"
+    fila.mkdir()
+    (fila / "prova_exemplo.json").write_text("{}", encoding="utf-8")
+    bom = {"titulo": "A", "falas": [{"quem": "vo", "texto": "oi"}, {"quem": "lucas", "texto": "oi"}] * 2}
+    (fila / "001.json").write_text(json.dumps(bom), encoding="utf-8")
+    (fila / "000_ruim.json").write_text("{nao é json", encoding="utf-8")
+    monkeypatch.setattr(dialogista, "PASTA_FILA", fila)
+    cfg = Config.carregar(modo_teste=True)
+    roteiro, origem = dialogista.pegar_da_fila(cfg, {"vo", "lucas"})
+    assert origem.name == "001.json" and roteiro["titulo"] == "A"
+    assert (fila / "usados" / "001.json").exists() and (fila / "com_erro" / "000_ruim.json").exists()
+    assert (fila / "prova_exemplo.json").exists()                        # exemplo continua na fila
+
+
+@pytest.mark.skipif(not (list((RAIZ / "ferramentas" / "rhubarb").glob("*/rhubarb*"))
+                         and (RAIZ / "modelos" / "piper" / "pt_BR-faber-medium.onnx").exists()),
+                    reason="Rhubarb/vozes offline ainda não baixados (python ferramentas/baixar.py)")
+def test_desenho_animado_completo_em_modo_teste(tmp_path, monkeypatch):
+    from robo import midia
+    from robo.animacao.episodio import produzir_animado
+    from robo.config import Config
+    monkeypatch.setenv("VOZ_MOTOR", "piper")
+    monkeypatch.setenv("TELEGRAM_TOKEN", "")
+    cfg = Config.carregar(modo_teste=True)
+    cfg.pasta_saida = tmp_path
+    pasta = produzir_animado(cfg)
+    video = pasta / "video_final.mp4"
+    assert 30 < midia.duracao(video) < 70 and midia.tem_audio(video)
+    pacote = (pasta / "PACOTE.txt").read_text(encoding="utf-8")
+    for rede in ("YOUTUBE SHORTS", "INSTAGRAM REELS", "TIKTOK", "KWAI"):
+        assert rede in pacote
+    assert (pasta / "thumbnail.jpg").exists()

@@ -181,7 +181,35 @@ O `.env` nunca vai para o GitHub (está no `.gitignore`). Na nuvem as chaves fic
 
 ---
 
-## 6. Para quem for mexer no código
+## 6. Desenho animado com boca sincronizada (`rodar.bat --animado`)
+
+O Vô e o Lucas **conversando**, com a boca mexendo junto com a fala, a partir da **arte já
+publicada da série** (a cara deles não muda).
+
+```powershell
+.\rodar.bat --animado              # pega um roteiro da fila ou o Gemini escreve um diálogo
+.\rodar.bat --animado --lote 3     # 3 desenhos seguidos
+.\rodar.bat --animado roteiros_animados\meu_causo.json
+```
+
+Como funciona:
+1. **Roteiro em diálogo**: fila `roteiros_animados\` (no projeto ou no Drive), o mais antigo primeiro;
+   se estiver vazia, o Gemini escreve. Formato no `roteiros_animados\prova_o_ouro_do_rio.json`.
+2. **Vozes**: uma para cada personagem (`config\serie.yaml` → `animacao.vozes`). Padrão: vozes da
+   Microsoft (edge-tts). Sem internet, usa as vozes offline do Piper.
+3. **Boca**: o Rhubarb Lip Sync escuta cada fala e diz qual das 9 bocas usar a cada instante.
+4. **Arte**: `midia\retratos\vo_e_lucas\` é a imagem publicada. O robô apaga só a boca e os olhos,
+   desenha as bocas no mesmo traço e devolve o bigode do Vô por cima. O resto fica idêntico.
+5. **Vídeo vertical 1080x1920** com título, legenda, close em quem fala; textos de cada rede no
+   `PACOTE.txt` e aviso no Telegram, igual aos curtos.
+
+**Nova imagem (retrato)**: crie `midia\retratos\<nome>\` com `base.jpg` e um `retrato.json` como o
+do `vo_e_lucas` (centro e largura da boca, área a apagar, olhos e rosto de cada personagem).
+O instalar.bat baixa o Rhubarb e as vozes offline (`python ferramentas\baixar.py`, com hash conferido).
+
+---
+
+## 7. Para quem for mexer no código
 
 ```powershell
 .venv\Scripts\activate

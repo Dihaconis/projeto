@@ -22,8 +22,10 @@ from pathlib import Path
 
 from ..config import RAIZ, Config
 from .. import midia, notificador
-from ..agentes import diretor_arte
-from . import desenho, labios, render, retrato, vozes
+from .. import chefe
+from ..agentes import diretor_arte, social
+from ..llm import LLM
+from . import desenho, dialogista, labios, render, retrato, vozes
 from .bonecos import Boneco
 
 PASTA_ROTEIROS = RAIZ / "roteiros_animados"
@@ -66,9 +68,28 @@ def revisar(video: Path, falas: list[render.Fala], total: float) -> list[str]:
     return problemas
 
 
+def _obter_roteiro(cfg: Config, arquivo: Path | None, llm, historico: list[str]) -> dict:
+    """Arquivo indicado > fila (projeto/Drive) > Gemini. No modo teste, o roteiro de prova."""
+    if arquivo:
+        return json.loads(Path(arquivo).read_text(encoding="utf-8"))
+    padrao = cfg.serie.get("animacao", {}).get("retrato_padrao", "vo_e_lucas")
+    personagens = set(retrato.carregar(padrao).rostos)
+    if cfg.modo_teste:
+        return json.loads(PROVA.read_text(encoding="utf-8"))
+    pronto = dialogista.pegar_da_fila(cfg, personagens)
+    if pronto:
+        print(f"1/5 Usando roteiro da fila: {pronto[1].name}")
+        return pronto[0]
+    print("1/5 Roteirista (Gemini) escrevendo o diálogo...")
+    return dialogista.escrever(cfg, llm, sorted(personagens, key=lambda p: p != "vo"), historico)
+
+
 def produzir_animado(cfg: Config, arquivo: Path | None = None) -> Path:
-    arquivo = arquivo or PROVA
-    roteiro = json.loads(Path(arquivo).read_text(encoding="utf-8"))
+    llm = LLM(cfg)
+    historico = chefe._ler_historico()
+    roteiro = _obter_roteiro(cfg, arquivo, llm, [h["titulo"] for h in historico])
+    if not roteiro.get("retrato") and not roteiro.get("cenario"):
+        roteiro["retrato"] = cfg.serie.get("animacao", {}).get("retrato_padrao", "vo_e_lucas")
     arte = None
     if roteiro.get("retrato"):                       # arte já publicada da série, animada
         arte = retrato.carregar(roteiro["retrato"])
@@ -133,12 +154,21 @@ def produzir_animado(cfg: Config, arquivo: Path | None = None) -> Path:
         capa = diretor_arte.capa_horizontal(quadro, frase, pasta / "thumbnail.jpg")
 
     problemas = revisar(video, falas, total)
+    # o mesmo social media dos curtos escreve título, legenda e hashtags de cada rede
+    como_cenas = {"titulo_episodio": roteiro["titulo"], "gancho": roteiro.get("gancho", ""),
+                  "cenas": [{"narracao": f"{f.quem}: {f.texto}"} for f in falas],
+                  "moral": roteiro.get("moral", ""), "cta": roteiro.get("cta", "")}
+    textos = roteiro.get("textos") or social.escrever(cfg, llm, como_cenas)
+    textos = social.ajustar(cfg, textos, como_cenas)
+    (pasta / "textos.json").write_text(json.dumps(textos, ensure_ascii=False, indent=2), encoding="utf-8")
     gasto = time.time() - inicio
-    pacote = (f"TÍTULO: {roteiro['titulo']}\n\nDESCRIÇÃO:\n{roteiro.get('descricao', '')}\n\n"
-              f"Duração: {total:.0f} s · montado em {gasto / 60:.1f} min · vozes: {', '.join(sorted(usados))}\n")
-    (pasta / "PACOTE.txt").write_text(pacote, encoding="utf-8")
-    mensagem = (f"🎬 Desenho animado pronto: {roteiro['titulo']}\n"
-                f"{total:.0f} s, boca sincronizada com a fala.\n"
-                + ("⚠️ Confira: " + "; ".join(problemas) if problemas else "✅ Revisão sem problemas."))
+    mensagem = chefe._mensagem(cfg, como_cenas, textos, problemas, gasto)
+    mensagem = mensagem.replace("🎣 Episódio pronto", "🎬 Desenho animado pronto", 1)
+    (pasta / "PACOTE.txt").write_text(
+        mensagem + f"\n\nDuração: {total:.0f} s · vozes: {', '.join(sorted(usados))}\n", encoding="utf-8")
+    if not cfg.modo_teste and roteiro["titulo"] not in {h["titulo"] for h in historico}:
+        historico.append({"data": datetime.now().isoformat(timespec="minutes"),
+                          "titulo": roteiro["titulo"], "moral": roteiro.get("moral", ""), "tipo": "animado"})
+        chefe._gravar_historico(historico)
     notificador.avisar(cfg, pasta, video, capa, mensagem)
     return pasta

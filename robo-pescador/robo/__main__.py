@@ -6,7 +6,8 @@
     python -m robo --longo      # episódio longo (~15 min, YouTube) + cortes em pé
     python -m robo --status     # mostra filas, episódios parados e prontos
     python -m robo --vigiar 8   # fica 8 h esperando as imagens do Colab e termina os episódios sozinho
-    python -m robo --animado    # desenho animado com boca sincronizada (roteiro de prova)
+    python -m robo --animado            # desenho animado: roteiro da fila ou escrito pelo Gemini
+    python -m robo --animado --lote 3   # 3 desenhos animados seguidos
     python -m robo --animado roteiros_animados/meu_causo.json
 """
 import argparse
@@ -42,7 +43,7 @@ def main() -> int:
     p.add_argument("--longo", action="store_true", help="episódio longo para o YouTube + cortes")
     p.add_argument("--status", action="store_true", help="mostra como estão as filas e episódios")
     p.add_argument("--animado", nargs="?", const="", default=None, metavar="ROTEIRO",
-                   help="desenho animado com boca sincronizada (sem arquivo: roteiro de prova)")
+                   help="desenho animado com boca sincronizada (sem arquivo: fila ou Gemini)")
     p.add_argument("--vigiar", type=float, default=0, metavar="HORAS",
                    help="fica esperando as imagens do Colab e termina cada episódio quando elas chegam")
     args = p.parse_args()
@@ -57,8 +58,11 @@ def main() -> int:
     if args.animado is not None:
         from pathlib import Path
         from .animacao.episodio import produzir_animado
-        pasta = produzir_animado(cfg, Path(args.animado) if args.animado else None)
-        print(f"\nPronto. Pasta do desenho: {pasta}")
+        for n in range(max(1, args.lote)):
+            if args.lote > 1:
+                print(f"\n===== Desenho {n + 1} de {args.lote} =====")
+            pasta = produzir_animado(cfg, Path(args.animado) if args.animado else None)
+            print(f"\nPronto. Pasta do desenho: {pasta}")
         return 0
 
     if args.vigiar:
