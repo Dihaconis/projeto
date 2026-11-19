@@ -1,0 +1,71 @@
+# Empacotamento (seção 15): NSIS x64 por usuário (sem admin) + portable.
+appId: app.mudo.desktop
+productName: MUDO
+copyright: MUDO
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+  # ffmpeg/ffprobe vão em resources/bin (hash conferido); não duplicar dentro do asar
+  - '!node_modules/ffmpeg-static/ffmpeg'
+  - '!node_modules/ffmpeg-static/ffmpeg.exe'
+  - '!node_modules/ffprobe-static/bin/**'
+  # o build Node do transformers.js já embute o runtime web que usa; o pacote em si não é carregado
+  - '!node_modules/onnxruntime-web/**'
+asar: true
+# better-sqlite3 13, sharp e onnxruntime-node usam binários N-API pré-compilados,
+# estáveis entre versões do Node/Electron: não há o que recompilar no build.
+npmRebuild: false
+# remove binários nativos de outras plataformas (onnxruntime, better-sqlite3)
+afterPack: scripts/after-pack.cjs
+# módulos nativos precisam estar fora do asar para carregar
+asarUnpack:
+  - node_modules/better-sqlite3/**
+  - node_modules/sharp/**
+  - node_modules/@img/**
+  - node_modules/onnxruntime-node/**
+extraResources:
+  - from: migrations
+    to: migrations
+  - from: resources/bin
+    to: bin
+  - from: resources/models
+    to: models
+  - from: assets
+    to: assets
+  - from: build/cli
+    to: cli
+electronFuses:
+  # a CLI roda no próprio executável em modo Node (funciona sem Node instalado)
+  runAsNode: true
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: MUDO
+  artifactName: MUDO-Setup-${version}-x64.exe
+  deleteAppDataOnUninstall: false
+portable:
+  artifactName: MUDO-Portable-${version}-x64.exe
+linux:
+  # usado só para validar o empacotamento em CI/Linux; o produto é Windows
+  target: [dir]
+  icon: build/icon.png
+  category: AudioVideo

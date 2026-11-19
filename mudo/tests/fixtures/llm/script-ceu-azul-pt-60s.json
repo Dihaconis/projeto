@@ -1,0 +1,14 @@
+{
+  "title": "Por que o céu é azul? A resposta em um minuto",
+  "hook": "Você olha para cima todo dia e vê azul. Mas a luz do Sol é branca.",
+  "acts": [
+    { "n": 1, "heading": "Gancho", "text": "Você olha para cima todo dia e vê azul. Mas a luz do Sol é branca. Em um minuto, você vai entender o que pinta o céu." },
+    { "n": 2, "heading": "A luz do Sol", "text": "A luz branca é uma mistura de cores. Cada cor viaja como uma onda, e o azul tem ondas curtas, enquanto o vermelho tem ondas longas." },
+    { "n": 3, "heading": "O ar espalha o azul", "text": "Quando a luz entra na atmosfera, ela bate em moléculas minúsculas de gás. Essas moléculas espalham muito mais as ondas curtas. O azul ricocheteia para todos os lados." },
+    { "n": 4, "heading": "E o pôr do sol", "text": "No fim da tarde, a luz atravessa muito mais ar até chegar aos seus olhos. O azul se perde pelo caminho, e sobram os tons laranja e vermelho." },
+    { "n": 5, "heading": "Fechamento", "text": "Então o céu não é azul por si só. Ele é a luz do Sol espalhada pelo ar que respiramos. Da próxima vez que olhar para cima, lembre disso." }
+  ],
+  "description": "Por que o céu é azul se a luz do Sol é branca? Neste vídeo curto explicamos o espalhamento da luz na atmosfera.\n\nTambém mostramos por que o pôr do sol fica laranja e vermelho.",
+  "tags": ["céu azul", "ciência", "física", "luz", "atmosfera", "pôr do sol", "curiosidades", "espalhamento de Rayleigh"],
+  "thumbnail_title": "O céu azul explicado"
+}

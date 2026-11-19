@@ -1,0 +1,97 @@
+{
+  "base": "base.jpg",
+  "origem": "Arte já publicada da série (Vô e Lucas no rio ao entardecer).",
+  "personagens": {
+    "vo": {
+      "boca": {
+        "centro": [
+          404,
+          495
+        ],
+        "largura": 84,
+        "sorriso": 0.35,
+        "apagar": [
+          358,
+          497,
+          458,
+          516
+        ]
+      },
+      "frente": {
+        "caixa": [
+          285,
+          430,
+          480,
+          500
+        ],
+        "limiar": 160
+      },
+      "olhos": [
+        {
+          "caixa": [
+            303,
+            337,
+            353,
+            358
+          ],
+          "curva": 0.22
+        },
+        {
+          "caixa": [
+            427,
+            343,
+            476,
+            364
+          ],
+          "curva": 0.22
+        }
+      ],
+      "rosto": [
+        395,
+        430,
+        500
+      ]
+    },
+    "lucas": {
+      "boca": {
+        "centro": [
+          698,
+          892
+        ],
+        "largura": 118,
+        "sorriso": 0.5,
+        "apagar": [
+          636,
+          873,
+          764,
+          909
+        ]
+      },
+      "olhos": [
+        {
+          "caixa": [
+            627,
+            787,
+            672,
+            808
+          ],
+          "curva": 0.28
+        },
+        {
+          "caixa": [
+            737,
+            781,
+            780,
+            802
+          ],
+          "curva": 0.28
+        }
+      ],
+      "rosto": [
+        705,
+        850,
+        430
+      ]
+    }
+  }
+}

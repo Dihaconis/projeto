@@ -1,0 +1,12 @@
+# Nunca vão para o GitHub
+.env
+.venv/
+saida/
+__pycache__/
+*.pyc
+.pytest_cache/
+dados/telegram_chat.txt
+# Baixados pelo instalar.bat (com hash conferido)
+ferramentas/rhubarb/
+modelos/
+midia/bonecos/

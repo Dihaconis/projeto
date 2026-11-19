@@ -1,0 +1,8 @@
+{
+  "approved": false,
+  "issues": [
+    { "kind": "pacing", "act": 4, "note": "O ato 4 introduz o pôr do sol sem ligação com o anterior." },
+    { "kind": "factual", "act": 3, "note": "Afirmação simplificada sobre espalhamento; vale ressalvar." }
+  ],
+  "revisedActs": null
+}
