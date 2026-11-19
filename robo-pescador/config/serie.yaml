@@ -77,7 +77,7 @@ animacao:
       edge: {voz: "pt-BR-AntonioNeural", velocidade: "-8%", tom: "-6Hz"}
       piper: {modelo: "pt_BR-faber-medium", tom: 0.95, lentidao: 1.08}
     lucas:
-      edge: {voz: "pt-BR-ThalitaMultilingualNeural", velocidade: "+6%", tom: "-4Hz"}
+      edge: {voz: "pt-BR-AntonioNeural", velocidade: "+8%", tom: "+40Hz"}   # escolhida: amostra F
       piper: {modelo: "pt_BR-jeff-medium", tom: 1.22, lentidao: 0.95}
   # rodar.bat --amostras-voz lucas  -> manda uma amostra de cada no Telegram para você escolher;
   # depois copie a escolhida para vozes.lucas.edge acima
