@@ -9,6 +9,7 @@ pillow>=10.0             # Thumbnail e imagens de teste
 python-dotenv>=1.0       # Lê o arquivo .env
 opencv-python-headless>=4.9   # Filtro de xilogravura nas imagens
 numpy>=1.26
+piper-tts>=1.8       # Voz offline dos personagens (desenho animado), sem internet
 
 # Só para desenvolvimento
 pytest>=8.0

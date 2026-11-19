@@ -7,6 +7,7 @@ python -m venv .venv
 call .venv\Scripts\activate.bat
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+python ferramentas\baixar.py || (echo Falha ao baixar o Rhubarb ou as vozes offline. & pause & exit /b 1)
 if not exist .env copy .env.example .env
 echo.
 echo Pronto. Abra o arquivo .env no Bloco de Notas e cole sua GEMINI_API_KEY.

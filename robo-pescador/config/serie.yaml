@@ -65,3 +65,15 @@ formato_longo:
   velocidade_voz: "-12%"        # mais calma que nos curtos: é história para ouvir
   respiro_segundos: 0.45        # pausa entre uma fala e outra
   cta_corte: "O causo completo tá no canal As Histórias de um Pescador, lá no YouTube."
+
+# Desenho animado com boca sincronizada (rodar.bat --animado)
+animacao:
+  motor_voz: edge              # edge (melhor, precisa de internet) ou piper (offline). VOZ_MOTOR no .env muda.
+  respiro_segundos: 0.35       # pausa entre uma fala e a próxima
+  vozes:
+    vo:
+      edge: {voz: "pt-BR-AntonioNeural", velocidade: "-8%", tom: "-6Hz"}
+      piper: {modelo: "pt_BR-faber-medium", tom: 0.95, lentidao: 1.08}
+    lucas:
+      edge: {voz: "pt-BR-FranciscaNeural", velocidade: "+4%", tom: "-12Hz"}
+      piper: {modelo: "pt_BR-jeff-medium", tom: 1.22, lentidao: 0.95}

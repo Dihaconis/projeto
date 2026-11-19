@@ -1,0 +1,17 @@
+{
+  "titulo": "O ouro que o Vô soltou no rio (prova animada)",
+  "frase_capa": "O Vô soltou o ouro no rio?!",
+  "descricao": "O Lucas descobre por que o Vô, garimpeiro de antigamente, devolveu uma pepita para o Araguaia. #historiasdeumpescador #araguaia #causos #norte",
+  "cenario": "beira_rio_entardecer",
+  "falas": [
+    {"quem": "lucas", "texto": "Vô, é verdade que o senhor achou uma pepita de ouro e jogou de volta no rio?", "expressao": "surpreso", "reacao": "feliz"},
+    {"quem": "vo", "texto": "Verdade, menino. Do tamanho de um caroço de açaí. Brilhava mais que lamparina em noite sem lua.", "expressao": "feliz", "reacao": "surpreso"},
+    {"quem": "lucas", "texto": "E por que o senhor não ficou com ela? A gente ia ficar rico!", "expressao": "surpreso", "reacao": "neutro"},
+    {"quem": "vo", "texto": "Porque naquele dia o rio tava baixo e o peixe tava pouco. O garimpo tinha deixado a água turva de lama.", "expressao": "serio", "reacao": "serio"},
+    {"quem": "vo", "texto": "Eu olhei pra pepita e pensei: isso aqui não se come, não se bebe e não segura barranco.", "expressao": "serio", "reacao": "serio"},
+    {"quem": "lucas", "texto": "Mas dava pra comprar um monte de peixe, Vô.", "expressao": "neutro", "reacao": "feliz"},
+    {"quem": "vo", "texto": "Dava. Uma vez. Mas o rio dá peixe todo santo dia, se a gente deixar ele em paz.", "expressao": "feliz", "reacao": "surpreso"},
+    {"quem": "lucas", "texto": "Então o rio é que é o ouro de verdade.", "expressao": "feliz", "reacao": "feliz"},
+    {"quem": "vo", "texto": "Agora sim, tu pescou a história. Pega o remo, que o jantar não vai pular sozinho na canoa.", "expressao": "feliz", "reacao": "feliz"}
+  ]
+}
