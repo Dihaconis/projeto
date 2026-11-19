@@ -223,14 +223,19 @@ class RetratoCena:
         self.piscar = {pid: render.Piscar(pid, total) for pid in retrato.rostos}
         self.bocas = [render.Boca(f.cues) for f in falas]
         self.legendas = [(a, b, txt, f.quem) for f in falas for a, b, txt in render.pedacos_legenda(f, 5)]
-        self.fonte = render._fonte(round(saida[0] * 0.085))
-        self.fonte_titulo = render._fonte(round(saida[0] * 0.07))
         w, h = saida
-        fundo = retrato.original.resize((h, h), Image.LANCZOS).crop(((h - w) // 2, 0, (h - w) // 2 + w, h))
+        self.vertical = h >= w
+        menor = min(w, h)
+        self.fonte = render._fonte(round(menor * (0.085 if self.vertical else 0.062)))
+        self.fonte_titulo = render._fonte(round(menor * 0.07))
+        lado_fundo = max(w, h)                         # arte desfocada cobrindo a tela toda
+        fundo = retrato.original.resize((lado_fundo, lado_fundo), Image.LANCZOS)
+        fundo = fundo.crop(((lado_fundo - w) // 2, (lado_fundo - h) // 2, (lado_fundo - w) // 2 + w, (lado_fundo - h) // 2 + h))
         fundo = fundo.filter(ImageFilter.GaussianBlur(28))
         self.fundo = Image.eval(fundo, lambda v: int(v * 0.55))
-        self.lado = w                                  # o retrato quadrado ocupa a largura toda
-        self.topo = (h - w) // 2
+        self.lado = menor                              # o retrato quadrado ocupa o lado menor
+        self.topo = (h - menor) // 2
+        self.esquerda = (w - menor) // 2
         self._render = render
 
     def _caixa(self, plano, t: float):
@@ -257,15 +262,19 @@ class RetratoCena:
         plano = next((p for p in self.planos if p.inicio <= t < p.fim), self.planos[-1])
         arte = arte.resize((self.lado, self.lado), Image.BILINEAR, box=self._caixa(plano, t))
         img = self.fundo.copy()
-        img.paste(arte, (0, self.topo))
+        img.paste(arte, (self.esquerda, self.topo))
         d = ImageDraw.Draw(img)
-        if self.titulo:
+        if self.titulo and self.vertical:
             self._texto(d, self.titulo, self.fonte_titulo, "#E8B828", centro_y=self.topo / 2)
         if self.legenda:
             leg = next(((txt, quem) for a, b, txt, quem in self.legendas if a <= t < b), None)
             if leg:
                 cor = self._render.COR_LEGENDA.get(leg[1], "#FFFFFF")
-                self._texto(d, leg[0], self.fonte, cor, centro_y=self.topo + self.lado + (self.saida[1] - self.topo - self.lado) / 2)
+                if self.vertical:
+                    centro = self.topo + self.lado + (self.saida[1] - self.topo - self.lado) / 2
+                else:                                  # horizontal: legenda embaixo, por cima da arte
+                    centro = self.saida[1] - self.fonte.size * 1.6
+                self._texto(d, leg[0], self.fonte, cor, centro_y=centro)
         return img
 
     def _texto(self, d, texto, fonte, cor, centro_y):

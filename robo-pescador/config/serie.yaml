@@ -73,6 +73,9 @@ animacao:
   duracao_alvo_segundos: 75    # desenho vertical (Reels, Shorts, TikTok, Kwai)
   retrato_padrao: vo_e_lucas   # arte publicada usada quando o roteiro não indica outra (midia/retratos/)
   vozes:
+    narrador:                  # a voz que já narra os curtos do canal
+      edge: {voz: "pt-BR-AntonioNeural", velocidade: "-6%", tom: "+0Hz"}
+      piper: {modelo: "pt_BR-faber-medium", tom: 1.0, lentidao: 1.05}
     vo:
       edge: {voz: "pt-BR-AntonioNeural", velocidade: "-8%", tom: "-6Hz"}
       piper: {modelo: "pt_BR-faber-medium", tom: 0.95, lentidao: 1.08}

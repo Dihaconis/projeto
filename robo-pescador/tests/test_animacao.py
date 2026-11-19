@@ -164,3 +164,65 @@ def test_candidatas_de_voz_no_serie_yaml():
     assert am["frase"] and len(am["lucas"]) >= 4 and len(am["vo"]) >= 2
     for cand in list(am["lucas"].values()) + list(am["vo"].values()):
         assert cand["voz"].startswith("pt-BR-") and cand["voz"].endswith("Neural")
+
+
+def test_episodio_da_corrida_cobre_as_90_cenas_e_e_valido():
+    from robo.animacao import longo_animado
+    r = json.loads((RAIZ / "roteiros_longos_animados" / "a_corrida_mais_longa_do_vo.json").read_text(encoding="utf-8"))
+    longo_animado.validar(r)
+    lista = longo_animado.blocos(r)
+    assert sorted({c for _, b in lista for c in b["cenas"]}) == list(range(1, 91))
+    assert len(r["imagens"]) < 45                                         # 90 cenas, bem menos imagens
+    assert {b["imagem"] for _, b in lista if b["tipo"] == "narracao"} == set(r["imagens"])
+    assert sum(b["tipo"] == "conversa" for _, b in lista) >= 5
+    assert len(r["cortes"]) == 6 and len(r["capitulos"]) == 6
+
+
+def test_longo_animado_recusa_roteiro_quebrado():
+    from robo.animacao import longo_animado
+    base = {"tipo": "longo_animado", "imagens": {"a": {"prompt": "x"}},
+            "capitulos": [{"titulo": "c", "blocos": [{"tipo": "narracao", "imagem": "b", "cenas": [1], "texto": "oi"}]}]}
+    with pytest.raises(longo_animado.ErroRoteiro, match="imagem 'b'"):
+        longo_animado.validar(json.loads(json.dumps(base)))
+    base["capitulos"][0]["blocos"][0] = {"tipo": "conversa", "cenas": [1], "falas": [{"quem": "bisavo", "texto": "oi"}]}
+    with pytest.raises(longo_animado.ErroRoteiro, match="fala inválida"):
+        longo_animado.validar(base)
+
+
+@pytest.mark.skipif(not (list((RAIZ / "ferramentas" / "rhubarb").glob("*/rhubarb*"))
+                         and (RAIZ / "modelos" / "piper" / "pt_BR-faber-medium.onnx").exists()),
+                    reason="Rhubarb/vozes offline ainda não baixados (python ferramentas/baixar.py)")
+def test_longo_animado_completo_em_modo_teste(tmp_path, monkeypatch):
+    from robo import midia
+    from robo.animacao import longo_animado
+    from robo.config import Config
+    monkeypatch.setenv("VOZ_MOTOR", "piper")
+    monkeypatch.setenv("TELEGRAM_TOKEN", "")
+    roteiro = {"tipo": "longo_animado", "titulo": "Teste longo", "frase_capa": "TESTE", "capa_imagem": "rio",
+               "imagens": {"rio": {"prompt": "river"}, "estrada": {"prompt": "road"}},
+               "capitulos": [
+                   {"titulo": "Começo", "blocos": [
+                       {"tipo": "narracao", "imagem": "rio", "cenas": [1], "texto": "O rio estava calmo naquela manhã."},
+                       {"tipo": "conversa", "retrato": "vo_e_lucas", "cenas": [2], "falas": [
+                           {"quem": "lucas", "texto": "Vô, conta outra história!"},
+                           {"quem": "vo", "texto": "Então senta, que essa é comprida."}]}]},
+                   {"titulo": "Lembrança", "blocos": [
+                       {"tipo": "narracao", "imagem": "estrada", "cenas": [3], "texto": "A estrada de chão parecia não ter fim."}]}],
+               "cortes": [{"titulo": "O pedido do Lucas", "cenas": [2, 3]}]}
+    arq = tmp_path / "ep.json"
+    arq.write_text(json.dumps(roteiro, ensure_ascii=False), encoding="utf-8")
+    cfg = Config.carregar(modo_teste=True)
+    cfg.pasta_saida = tmp_path / "saida"
+    pasta = longo_animado.produzir_longo_animado(cfg, arq)
+    video = pasta / "video_longo.mp4"
+    soma = sum(midia.duracao(c) for c in sorted((pasta / "blocos").glob("b*.mp4")))
+    assert abs(midia.duracao(video) - soma) < 0.5 and midia.tem_audio(video)
+    corte = pasta / "cortes" / "corte_1.mp4"
+    assert corte.exists() and midia.duracao(corte) < midia.duracao(video)
+    pacote = (pasta / "PACOTE.txt").read_text(encoding="utf-8")
+    assert "00:00 Começo" in pacote and "Lembrança" in pacote and "TIKTOK" in pacote
+    # continuar: rodar de novo na mesma pasta não refaz os blocos
+    antes = {c.name: c.stat().st_mtime for c in (pasta / "blocos").glob("b*.mp4")}
+    (pasta / "video_longo.mp4").unlink()
+    longo_animado.produzir_longo_animado(cfg, pasta)
+    assert {c.name: c.stat().st_mtime for c in (pasta / "blocos").glob("b*.mp4")} == antes

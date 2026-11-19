@@ -1,0 +1,1054 @@
+{
+ "tipo": "longo_animado",
+ "titulo": "A corrida mais longa do Vô: um parto no banco de trás do táxi",
+ "frase_capa": "A CORRIDA QUE NÃO TEVE PREÇO",
+ "capa_imagem": "atolada",
+ "descricao": "Lucas quer pilotar a canoa sozinho e dá três voltas no porto. Para acalmar o neto, o Vô conta da noite de chuva em que era taxista e levou uma mulher em trabalho de parto por 60 km de estrada de chão numa Brasília amarela, com limpador quebrado, atoleiro e ponte sem tábua. E a história ainda não tinha acabado. As Histórias de um Pescador: causos, piadas e a vida real do Norte que o Brasil não conhece.",
+ "hashtags": [
+  "#historiasdeumpescador",
+  "#rioaraguaia",
+  "#conceicaodoaraguaia",
+  "#para",
+  "#causos",
+  "#norte",
+  "#taxi"
+ ],
+ "moral": "Pressa não faz chegar mais cedo. Cuidado é que faz chegar.",
+ "cta": "Você já chegou mais rápido indo devagar?",
+ "imagens": {
+  "porto": {
+   "prompt": "Wide shot of a wooden river port at sunrise on the calm Araguaia river, Lucas, the boy, standing proudly on the bow of a long wooden canoe with a long-tail motor, white sandbanks and dark forest across the water.",
+   "sepia": false
+  },
+  "praia": {
+   "prompt": "Distant view across a calm shallow river of a long white sandbank with small white canvas tents and two boys waving, blue sky with cotton clouds reflected in the water.",
+   "sepia": false
+  },
+  "vo_rampa": {
+   "prompt": "Medium shot of Grandpa, an old northeastern Brazilian man with a gray mustache and brown leather hat, walking slowly down a red dirt ramp to the river with a thermos under his arm, low houses and a big mango tree behind him.",
+   "sepia": false
+  },
+  "motor": {
+   "prompt": "Lucas, the boy, pulling the starter rope of a long-tail boat motor with both hands, a puff of blue smoke and water splashes, Grandpa surprised in the background.",
+   "sepia": false
+  },
+  "voltas": {
+   "prompt": "Top-down view of a wooden canoe spinning in circles on calm river water leaving a spiral wake, fishermen in other canoes watching in surprise and laughing, a white egret taking off from the rocks.",
+   "sepia": false
+  },
+  "vo_desliga": {
+   "prompt": "Grandpa standing knee-deep in the shallow river, holding the edge of the canoe with one hand and switching off the motor with the other, Lucas, the boy, dizzy in the bottom of the canoe.",
+   "sepia": false
+  },
+  "canoa_rio_acima": {
+   "prompt": "Top view of a canoe starting to move and gently turning its bow upstream away from the sandbank, a smooth curved wake, Lucas, the boy, concentrating at the stern, Grandpa sitting beside him.",
+   "sepia": false
+  },
+  "praia_chegada": {
+   "prompt": "On a white river beach, two boys laughing and pointing at a canoe, Lucas, the boy, stepping out calmly and proudly, Grandpa sitting in the canoe behind holding back laughter.",
+   "sepia": false
+  },
+  "sala": {
+   "prompt": "Wide shot of a public school classroom with red brick walls, blue barred windows, a ceiling fan and wooden desks, a woman in her thirties with tied-up hair standing in front telling a story, the whole class listening.",
+   "sepia": false
+  },
+  "lucas_carteira": {
+   "prompt": "Close-up of Lucas, the boy, at a wooden school desk with his pencil frozen in the air and wide eyes, a drawing of a canoe in his notebook, a blurred empty blackboard behind.",
+   "sepia": false
+  },
+  "varanda": {
+   "prompt": "Sunset on a house porch with an orange wall, Grandpa sitting in a red wire chair reading a small paper note with teary eyes, Lucas, the boy, sitting on the floor beside him, long orange shadows.",
+   "sepia": false
+  },
+  "final": {
+   "prompt": "Final wide shot at sunset of the calm Araguaia river seen from a porch, a canoe tied at the port, purple and orange sky, Grandpa and Lucas, the boy, seen from behind, a faint serpent-like shadow on a distant rock quarry.",
+   "sepia": false
+  },
+  "rua": {
+   "prompt": "Sepia flashback of a small Amazon river town street in the 1990s, dirt road, low houses with arched barred windows, bicycles leaning on wooden poles, a single parked car.",
+   "sepia": true
+  },
+  "brasilia": {
+   "prompt": "Sepia flashback, a young man with black mustache and brown leather hat proudly leaning on an old yellow two-door hatchback with a taxi sign on the roof, the yellow car the only color in the frame.",
+   "sepia": true
+  },
+  "praca": {
+   "prompt": "Sepia flashback of a town square with a church in the background, shade trees and concrete benches, three men playing dominoes on the hood of a yellow taxi, a small radio hanging from the mirror.",
+   "sepia": true
+  },
+  "praca_chuva": {
+   "prompt": "Sepia night flashback of an empty town square in heavy diagonal rain, puddles reflecting a single street lamp, dogs curled on the church steps, a lone yellow taxi parked, a thin man on a bicycle in the rain.",
+   "sepia": true
+  },
+  "bento_carro": {
+   "prompt": "Sepia night flashback inside an old car, a soaked cowboy in the passenger seat pointing far into the dark, a young man with black mustache and brown leather hat gripping the steering wheel, thinking.",
+   "sepia": true
+  },
+  "brasilia_saindo": {
+   "prompt": "Sepia night flashback from behind an old yellow taxi as its headlights turn on and cut through heavy rain, exhaust smoke and water splashing from the wheels.",
+   "sepia": true
+  },
+  "bisavo": {
+   "prompt": "Sepia night flashback of a low wooden house at the edge of town, a middle-aged woman with a headscarf at the open window holding a lit oil lamp, its yellow flame the only color, a car passing in the rain.",
+   "sepia": true
+  },
+  "estrada": {
+   "prompt": "Sepia night flashback wide shot of a dirt road through the savanna, glowing red mud lit by headlights, water running in the wheel ruts, barbed wire fence and twisted savanna trees on both sides.",
+   "sepia": true
+  },
+  "limpador": {
+   "prompt": "Sepia night flashback front view of an old car driving in the rain, a broken windshield wiper stuck in the middle of the glass, a cowboy leaning half out of the passenger window wiping the windshield with his straw hat.",
+   "sepia": true
+  },
+  "pedreira": {
+   "prompt": "Sepia night flashback wide shot of a rock quarry wall by a dirt road lit by a lightning flash, a long faint serpent-like shadow on the stone barely visible, a small car passing below.",
+   "sepia": true
+  },
+  "fazenda": {
+   "prompt": "Sepia night flashback wide shot of a simple ranch with a mud-and-wattle house with a thatched roof and porch, a wooden corral beside it, a thin dog barking, lit by car headlights in the rain.",
+   "sepia": true
+  },
+  "casa_parteira": {
+   "prompt": "Sepia flashback interior of a clay house lit by an oil lamp, a young pregnant woman lying in a hammock holding her belly, a small old midwife with a headscarf and rosary giving orders.",
+   "sepia": true
+  },
+  "porta_banco": {
+   "prompt": "Sepia night comic flashback of two men carefully helping a pregnant woman into the tiny back seat of a two-door car in the rain, an old midwife pushing pillows inside, a dog watching.",
+   "sepia": true
+  },
+  "carro_cheio": {
+   "prompt": "Sepia night flashback front view of a crowded tiny car, a young man with black mustache driving, a cowboy holding a straw hat, two women squeezed in the back, an old midwife pointing her finger.",
+   "sepia": true
+  },
+  "cachorro": {
+   "prompt": "Sepia night flashback from behind a small car driving away on a muddy road with a thin dog running after it, ears flying and mud splashing.",
+   "sepia": true
+  },
+  "atolada": {
+   "prompt": "Sepia night flashback from behind a yellow car stuck in deep red mud, two soaked men knee-deep in mud pushing it in heavy rain, lit by the red rear light.",
+   "sepia": true
+  },
+  "carroca": {
+   "prompt": "Sepia night flashback wide shot of a wooden cart pulled by two big oxen on a muddy road, a hanging lantern with a yellow glow, an old cowboy with deep wrinkles, a worn hat and plastic raincoat on top.",
+   "sepia": true
+  },
+  "bois": {
+   "prompt": "Sepia night flashback side view of two oxen leaning into the pull, a tight rope dragging a small car slowly out of deep mud, an old cowboy raising his hand calmly, lit by a cart lantern.",
+   "sepia": true
+  },
+  "ponte": {
+   "prompt": "Sepia night flashback wide shot of a narrow wooden plank bridge over a swollen muddy creek with fast water, two planks missing in the middle, a young man with black mustache walking across with a flashlight.",
+   "sepia": true
+  },
+  "ponte_conserto": {
+   "prompt": "Sepia night flashback of two men kneeling on a wooden bridge fitting old planks into a gap, a flashlight on the floor lighting them from the side, rain falling on their backs, a small car waiting behind.",
+   "sepia": true
+  },
+  "mangueira": {
+   "prompt": "Sepia night flashback wide shot of a small car parked under a giant mango tree whose canopy shelters it like an umbrella, rain falling all around, a man pacing around the trunk.",
+   "sepia": true
+  },
+  "lanterna": {
+   "prompt": "Sepia night flashback of a young man with black mustache standing beside a car with his back to the window, holding a flashlight over his shoulder into the car while respectfully looking away.",
+   "sepia": true
+  },
+  "amanhecer": {
+   "prompt": "Flashback dawn over a wet savanna, the sun rising orange between twisted trees, low mist on a dirt road, a small car driving slowly, warm colors slowly returning to the sepia image.",
+   "sepia": false
+  },
+  "carro_bebe": {
+   "prompt": "Dawn flashback inside a car, a father looking back at a newborn wrapped in cloth in the mother's arms, a young man with black mustache driving calmly with both hands.",
+   "sepia": false
+  },
+  "hospital": {
+   "prompt": "Morning flashback of a simple small-town hospital with whitewashed walls, a mud-covered father shaking hands with a young man with black mustache holding his leather hat, a muddy yellow car parked in front.",
+   "sepia": false
+  },
+  "quarto": {
+   "prompt": "Morning flashback in a simple hospital room, a young mother in bed holding her newborn, the father beside her, both smiling, a young man with black mustache leaning at the door.",
+   "sepia": false
+  }
+ },
+ "capitulos": [
+  {
+   "titulo": "O piloto de onze anos",
+   "blocos": [
+    {
+     "tipo": "narracao",
+     "imagem": "porto",
+     "cenas": [
+      1
+     ],
+     "texto": "Lucas tinha onze anos, o pé descalço e uma certeza: naquela manhã, ia pilotar sozinho a canoa do Vô até a Praia das Gaivotas."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "praia",
+     "cenas": [
+      2
+     ],
+     "texto": "Lá na Praia das Gaivotas, no meio do rio, os amigos dele, Gabriel e Welder, já acenavam. Quem chegasse por último pagava o picolé."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "vo_rampa",
+     "cenas": [
+      3
+     ],
+     "texto": "O Vô chegou devagar, com o chapéu de couro na cabeça e a garrafa de café debaixo do braço. Olhou o neto. Olhou a canoa."
+    },
+    {
+     "tipo": "conversa",
+     "retrato": "vo_e_lucas",
+     "cenas": [
+      4,
+      5
+     ],
+     "falas": [
+      {
+       "quem": "vo",
+       "texto": "Desce daí, menino.",
+       "expressao": "serio",
+       "reacao": "serio"
+      },
+      {
+       "quem": "lucas",
+       "texto": "Vô, eu já sei pilotar. Eu vi o senhor fazer isso a vida inteira.",
+       "expressao": "serio",
+       "reacao": "neutro"
+      },
+      {
+       "quem": "vo",
+       "texto": "Ver não é saber. Eu também vejo avião passar todo dia, e nunca pilotei um.",
+       "expressao": "feliz",
+       "reacao": "serio"
+      }
+     ]
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "motor",
+     "cenas": [
+      6
+     ],
+     "texto": "Antes que o Vô entrasse na canoa, Lucas puxou a corda do motor com toda a força. Na primeira puxada, a rabeta pegou."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "voltas",
+     "cenas": [
+      7
+     ],
+     "texto": "A canoa disparou. Não para a praia. Para o lado. Depois para o outro. Em dois minutos, Lucas tinha dado três voltas completas no porto."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "voltas",
+     "cenas": [
+      8
+     ],
+     "texto": "Na margem, uma garça levantou voo, ofendida. Um pescador gritou: \"Tá treinando pra quê, menino? Pra ventilador?\" O porto inteiro riu."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "vo_desliga",
+     "cenas": [
+      9
+     ],
+     "texto": "O Vô entrou na água até o joelho, segurou a borda da canoa na volta seguinte e desligou o motor com um toque só."
+    },
+    {
+     "tipo": "conversa",
+     "retrato": "vo_e_lucas",
+     "cenas": [
+      10,
+      11
+     ],
+     "falas": [
+      {
+       "quem": "lucas",
+       "texto": "O senhor nunca confia em mim.",
+       "expressao": "serio",
+       "reacao": "neutro"
+      },
+      {
+       "quem": "vo",
+       "texto": "Confiar eu confio. Mas o rio não te conhece ainda. E rio não perdoa quem chega apressado.",
+       "expressao": "serio",
+       "reacao": "serio"
+      }
+     ]
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "porto",
+     "cenas": [
+      12
+     ],
+     "texto": "O Vô subiu na canoa, ligou o motor devagar e apontou a proa rio acima, bem longe de onde ficava a praia."
+    },
+    {
+     "tipo": "conversa",
+     "retrato": "vo_e_lucas",
+     "cenas": [
+      13,
+      14,
+      15
+     ],
+     "falas": [
+      {
+       "quem": "lucas",
+       "texto": "A praia é pra lá, Vô!",
+       "expressao": "surpreso",
+       "reacao": "neutro"
+      },
+      {
+       "quem": "vo",
+       "texto": "Quem aponta reto chega torto. O rio empurra. Deixa ele trabalhar pra gente.",
+       "expressao": "neutro",
+       "reacao": "serio"
+      },
+      {
+       "quem": "vo",
+       "texto": "Pressa, pressa. Tu me lembra eu, quando eu era taxista.",
+       "expressao": "feliz",
+       "reacao": "serio"
+      },
+      {
+       "quem": "lucas",
+       "texto": "Taxista? O senhor nunca contou isso.",
+       "expressao": "surpreso",
+       "reacao": "feliz"
+      },
+      {
+       "quem": "vo",
+       "texto": "Então segura, que essa corrida foi longa.",
+       "expressao": "feliz",
+       "reacao": "surpreso"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "titulo": "A Brasília amarela",
+   "blocos": [
+    {
+     "tipo": "narracao",
+     "imagem": "rua",
+     "cenas": [
+      16
+     ],
+     "texto": "Fazia mais de trinta anos. Conceição do Araguaia ainda tinha mais bicicleta que carro, e o Vô era moço, de bigode preto."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "brasilia",
+     "cenas": [
+      17
+     ],
+     "texto": "O orgulho dele era uma Brasília amarela, com a placa de táxi no teto e um pneu tão careca que dava pra se ver nele, feito espelho."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "praca",
+     "cenas": [
+      18
+     ],
+     "texto": "O ponto dele ficava na praça da igreja. Ali ele esperava passageiro, jogava dominó e ouvia o rádio de pilha tocando brega."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "praca_chuva",
+     "cenas": [
+      19
+     ],
+     "texto": "Naquela noite de novembro, caiu a primeira chuva grossa do ano. A praça esvaziou. Até os cachorros foram dormir na porta da igreja."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "praca_chuva",
+     "cenas": [
+      20
+     ],
+     "texto": "O Vô já ia fechar o vidro e voltar pra casa quando viu um homem pedalando no meio da chuva, encharcado da cabeça aos pés."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bento_carro",
+     "cenas": [
+      21
+     ],
+     "texto": "Era seu Bento, vaqueiro da Fazenda Boa Sorte. \"Moço, pelo amor de Deus! A Lurdes vai ganhar menino, e a parteira disse que é hoje!\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bento_carro",
+     "cenas": [
+      22
+     ],
+     "texto": "\"Onde é a fazenda?\", perguntou o Vô. Seu Bento respirou fundo. \"Sessenta quilômetros na estrada de chão. Depois do igarapé. Depois da pedreira.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bento_carro",
+     "cenas": [
+      23
+     ],
+     "texto": "O Vô fez as contas. Gasolina pela metade. Pneu careca. Limpador de para-brisa que funcionava quando queria. E chuva para a noite inteira."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "brasilia_saindo",
+     "cenas": [
+      24
+     ],
+     "texto": "Qualquer taxista com juízo diria não. O Vô tinha pouco juízo e muito coração. Ligou o carro. \"Bora, seu Bento. Segura firme.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bisavo",
+     "cenas": [
+      25
+     ],
+     "texto": "Na saída da cidade, passaram pela casa da Bisavó do Lucas. Ela estava na janela, com uma lamparina, e gritou: \"Vai devagar, moço!\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "brasilia_saindo",
+     "cenas": [
+      26
+     ],
+     "texto": "O Vô buzinou duas vezes, que era o jeito dele de dizer \"sim, senhora\". E pisou um pouquinho mais fundo no acelerador."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bento_carro",
+     "cenas": [
+      27
+     ],
+     "texto": "\"Ela disse devagar\", lembrou seu Bento. \"E eu tô indo devagar\", respondeu o Vô. \"Só que mais rápido.\""
+    },
+    {
+     "tipo": "conversa",
+     "retrato": "vo_e_lucas",
+     "cenas": [
+      28,
+      29
+     ],
+     "falas": [
+      {
+       "quem": "lucas",
+       "texto": "Então o senhor também era apressado!",
+       "expressao": "feliz",
+       "reacao": "feliz"
+      },
+      {
+       "quem": "vo",
+       "texto": "Era. E a estrada me ensinou do jeito mais difícil.",
+       "expressao": "feliz",
+       "reacao": "feliz"
+      },
+      {
+       "quem": "lucas",
+       "texto": "Ensinou como?",
+       "expressao": "surpreso",
+       "reacao": "neutro"
+      },
+      {
+       "quem": "vo",
+       "texto": "Com lama, Lucas. Muita lama. Escuta.",
+       "expressao": "serio",
+       "reacao": "surpreso"
+      }
+     ]
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "estrada",
+     "cenas": [
+      30
+     ],
+     "texto": "A estrada de chão começava onde acabava o asfalto, e naquela noite ela parecia um rio vermelho correndo ao contrário."
+    }
+   ]
+  },
+  {
+   "titulo": "Cinco numa Brasília",
+   "blocos": [
+    {
+     "tipo": "narracao",
+     "imagem": "limpador",
+     "cenas": [
+      31
+     ],
+     "texto": "Na primeira hora, o limpador de para-brisa desistiu. Ficou parado no meio do vidro, como quem diz: \"daqui eu não passo\"."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "limpador",
+     "cenas": [
+      32
+     ],
+     "texto": "Seu Bento não pensou duas vezes. Botou meio corpo para fora da janela e foi limpando o vidro com o chapéu de palha."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "limpador",
+     "cenas": [
+      33
+     ],
+     "texto": "\"Mais pra esquerda, seu Bento!\" \"Moço, meu braço só tem esse tamanho!\" Assim foram vinte quilômetros: um dirigindo, o outro sendo o limpador."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "pedreira",
+     "cenas": [
+      34
+     ],
+     "texto": "Passaram pela pedreira no meio da noite. Um relâmpago clareou a rocha, e o Vô jurou ter visto uma sombra comprida demais se mexendo."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "pedreira",
+     "cenas": [
+      35
+     ],
+     "texto": "\"Viu aquilo, seu Bento?\" \"Vi nada, moço. E se vi, não quero ter visto.\" O Vô acelerou sem discutir."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "fazenda",
+     "cenas": [
+      36
+     ],
+     "texto": "Já passava das onze quando chegaram à Fazenda Boa Sorte. Tinha um curral, uma casa de taipa e um cachorro que latia para a chuva."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "casa_parteira",
+     "cenas": [
+      37
+     ],
+     "texto": "Dentro da casa, dona Lurdes estava deitada numa rede, segurando a barriga. Do lado dela, dona Ana, a parteira, rezava e mandava ao mesmo tempo."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "casa_parteira",
+     "cenas": [
+      38
+     ],
+     "texto": "\"Esse menino não espera muito, não\", avisou dona Ana. \"Se for pra cidade, é agora. E eu vou junto.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "porta_banco",
+     "cenas": [
+      39
+     ],
+     "texto": "Foi aí que o Vô lembrou de um detalhe. A Brasília só tinha duas portas. E o banco de trás era do tamanho de uma rede dobrada."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "porta_banco",
+     "cenas": [
+      40
+     ],
+     "texto": "Colocar dona Lurdes lá dentro levou dez minutos, três almofadas, duas rezas e um resmungo que dona Ana fingiu não ouvir."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carro_cheio",
+     "cenas": [
+      41
+     ],
+     "texto": "Dona Ana entrou atrás. Seu Bento foi na frente, com o chapéu já pronto para limpar o vidro. E o cachorro quis ir também."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "cachorro",
+     "cenas": [
+      42
+     ],
+     "texto": "\"O cachorro fica\", decidiu o Vô. O cachorro não concordou. Correu atrás da Brasília por um quilômetro, latindo, até perder a discussão."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carro_cheio",
+     "cenas": [
+      43
+     ],
+     "texto": "Agora eram cinco dentro de um carro feito para quatro. Seis, contando quem vinha chegando. Menino ou menina, ninguém sabia ainda."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "estrada",
+     "cenas": [
+      44
+     ],
+     "texto": "Na volta, a chuva engrossou. A estrada que já era ruim virou sabão vermelho, e a Brasília começou a dançar de um lado para o outro."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carro_cheio",
+     "cenas": [
+      45
+     ],
+     "texto": "\"Devagar, moço!\", gritou dona Ana lá de trás. Era a segunda mulher na noite mandando o Vô ir devagar. Ele ainda não tinha escutado nenhuma."
+    }
+   ]
+  },
+  {
+   "titulo": "O atoleiro e a ponte",
+   "blocos": [
+    {
+     "tipo": "narracao",
+     "imagem": "atolada",
+     "cenas": [
+      46
+     ],
+     "texto": "Na baixada antes do igarapé, a Brasília deu um soluço, afundou de traseira e parou. As rodas giravam, e o carro não saía do lugar."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "atolada",
+     "cenas": [
+      47
+     ],
+     "texto": "O Vô fez o que todo apressado faz. Pisou fundo. O motor gritou, a lama voou, e o carro afundou mais um palmo."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "atolada",
+     "cenas": [
+      48
+     ],
+     "texto": "Ele e seu Bento desceram para empurrar. Lama até o joelho. Chuva até a alma. E a Brasília firme, como quem gostou do lugar."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "atolada",
+     "cenas": [
+      49
+     ],
+     "texto": "Lá dentro, dona Lurdes gemeu mais alto. Dona Ana bateu no vidro. \"Moço, esse menino tá com mais pressa que você!\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carroca",
+     "cenas": [
+      50
+     ],
+     "texto": "Foi quando apareceu uma luz fraca na estrada. Um vaqueiro velho, numa carroça puxada por dois bois, vinha devagarinho, como se tivesse a vida inteira."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carroca",
+     "cenas": [
+      51
+     ],
+     "texto": "Era seu Zé Candeia, que ninguém nunca viu correr. Ele olhou o carro, olhou a lama, olhou o Vô. \"Atolou com raiva, foi?\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bois",
+     "cenas": [
+      52
+     ],
+     "texto": "\"Atoleiro não sai com raiva, moço. Sai com jeito.\" Ele desceu da carroça, sem pressa, e amarrou uma corda no para-choque."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bois",
+     "cenas": [
+      53
+     ],
+     "texto": "\"Agora tira o pé\", disse seu Zé. \"Deixa as rodas quietas. Quem puxa é o boi. Boi não tem pressa, e por isso não erra.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "bois",
+     "cenas": [
+      54
+     ],
+     "texto": "Os bois deram um passo. Depois outro. A lama fez um barulho de chupeta, e a Brasília saiu do buraco como quem acorda de um cochilo."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carroca",
+     "cenas": [
+      55
+     ],
+     "texto": "O Vô quis pagar. Seu Zé recusou. \"Paga ajudando o próximo atolado.\" E sumiu na chuva, devagar, do jeito que tinha chegado."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "ponte",
+     "cenas": [
+      56
+     ],
+     "texto": "Cem metros depois, mais um problema: a ponte de madeira do igarapé. A água tinha subido, e duas tábuas tinham ido embora com a enxurrada."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "ponte",
+     "cenas": [
+      57
+     ],
+     "texto": "O Vô de antes teria acelerado e rezado. O Vô daquela noite desceu do carro com a lanterna e foi a pé, tábua por tábua."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "ponte_conserto",
+     "cenas": [
+      58
+     ],
+     "texto": "Seu Bento achou duas tábuas soltas na beira do igarapé. Os dois encaixaram as tábuas no vão, debaixo de chuva, sem dizer uma palavra."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "ponte_conserto",
+     "cenas": [
+      59
+     ],
+     "texto": "Depois o Vô atravessou de carro em primeira marcha, mais devagar que procissão, com seu Bento na frente guiando com a lanterna."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carro_cheio",
+     "cenas": [
+      60
+     ],
+     "texto": "Na outra margem, o Vô soltou o ar que estava prendendo desde a cidade. Foi aí que dona Ana gritou: \"Para o carro! Agora!\""
+    }
+   ]
+  },
+  {
+   "titulo": "Nasceu no banco de trás",
+   "blocos": [
+    {
+     "tipo": "narracao",
+     "imagem": "mangueira",
+     "cenas": [
+      61
+     ],
+     "texto": "O Vô encostou embaixo de um pé de manga enorme, na beira da estrada. A chuva batia nas folhas, mas embaixo dele quase não molhava."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "lanterna",
+     "cenas": [
+      62
+     ],
+     "texto": "\"Luz!\", mandou dona Ana. O Vô acendeu a lanterna e segurou firme, virado de costas, que tinha coisa ali que não era para ele ver."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "mangueira",
+     "cenas": [
+      63
+     ],
+     "texto": "Seu Bento andava em volta do pé de manga. Uma volta, duas, dez. \"Calma, homem\", disse o Vô. \"Tu tá parecendo eu.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "lanterna",
+     "cenas": [
+      64
+     ],
+     "texto": "Lá dentro, dona Ana falava baixinho com dona Lurdes. \"Respira. Isso. De novo. O mundo tá esperando, mas pode esperar mais um pouco.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "mangueira",
+     "cenas": [
+      65
+     ],
+     "texto": "Passou meia hora que pareceu um ano. A chuva foi afinando. Os sapos começaram a cantar. E, de repente, o mundo inteiro ficou quieto."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "lanterna",
+     "cenas": [
+      66
+     ],
+     "texto": "Então veio um choro. Fino, forte, zangado, de quem reclama que saiu do lugar quentinho. Seu Bento caiu sentado na lama."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "amanhecer",
+     "cenas": [
+      67
+     ],
+     "texto": "\"É menina!\", anunciou dona Ana, com a cabeça para fora da janela. \"Menina, e com um pulmão de vaqueiro!\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "amanhecer",
+     "cenas": [
+      68
+     ],
+     "texto": "O Vô olhou para o céu. A chuva tinha parado, e o primeiro risco de sol aparecia por trás do cerrado, alaranjado como brasa."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "amanhecer",
+     "cenas": [
+      69
+     ],
+     "texto": "Dali até a cidade, o Vô dirigiu como nunca tinha dirigido. Devagar. Desviando de cada buraco como quem carrega um ovo na colher."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "carro_bebe",
+     "cenas": [
+      70
+     ],
+     "texto": "\"Agora tu tá indo devagar\", reparou seu Bento. O Vô sorriu. \"Agora eu tô levando a coisa mais importante que já entrou nesse carro.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "hospital",
+     "cenas": [
+      71
+     ],
+     "texto": "Chegaram ao hospital da cidade com o sol já alto. O médico examinou mãe e filha e disse que as duas estavam fortes como aroeira."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "hospital",
+     "cenas": [
+      72
+     ],
+     "texto": "Na porta, seu Bento apertou a mão do Vô com as duas mãos. \"Moço, quanto é a corrida?\" O Vô olhou o carro, o pneu, a lama."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "hospital",
+     "cenas": [
+      73
+     ],
+     "texto": "\"Essa corrida não tem preço\", disse o Vô. \"Mas se quiser pagar, paga quando a menina aprender a ler. Ela me manda um bilhete.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "quarto",
+     "cenas": [
+      74
+     ],
+     "texto": "\"E qual é o seu nome, moço?\" \"Cícero.\" Seu Bento olhou para a mulher, a mulher olhou para a filha, e os dois sorriram juntos."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "hospital",
+     "cenas": [
+      75
+     ],
+     "texto": "A menina ganhou o nome de Cícera. E o Vô voltou pra casa dirigindo devagar, coisa que a cidade inteira estranhou por uma semana."
+    }
+   ]
+  },
+  {
+   "titulo": "O piloto devagar",
+   "blocos": [
+    {
+     "tipo": "conversa",
+     "retrato": "vo_e_lucas",
+     "cenas": [
+      76,
+      77,
+      78
+     ],
+     "falas": [
+      {
+       "quem": "lucas",
+       "texto": "E o senhor nunca mais viu a menina, Vô?",
+       "expressao": "surpreso",
+       "reacao": "feliz"
+      },
+      {
+       "quem": "vo",
+       "texto": "Senta aqui. Hoje quem pilota é tu.",
+       "expressao": "feliz",
+       "reacao": "surpreso"
+      },
+      {
+       "quem": "vo",
+       "texto": "Eu não vou pegar no motor. Só vou ficar do teu lado.",
+       "expressao": "feliz",
+       "reacao": "serio"
+      }
+     ]
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "canoa_rio_acima",
+     "cenas": [
+      79
+     ],
+     "texto": "Lucas puxou a corda devagar. O motor pegou na segunda. Ele quase apontou para a praia, mas lembrou. Virou a proa rio acima."
+    },
+    {
+     "tipo": "conversa",
+     "retrato": "vo_e_lucas",
+     "cenas": [
+      80
+     ],
+     "falas": [
+      {
+       "quem": "vo",
+       "texto": "Por que pra cima?",
+       "expressao": "neutro",
+       "reacao": "neutro"
+      },
+      {
+       "quem": "lucas",
+       "texto": "Porque o rio empurra. Deixa ele trabalhar pra gente.",
+       "expressao": "serio",
+       "reacao": "feliz"
+      }
+     ]
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "praia",
+     "cenas": [
+      81
+     ],
+     "texto": "A canoa desceu de lado, levada pela correnteza, devagar como a carroça do seu Zé Candeia. E foi encostar certinho na ponta da praia."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "praia_chegada",
+     "cenas": [
+      82
+     ],
+     "texto": "Gabriel e Welder vieram correndo. \"Égua, Lucas! Tu veio na velocidade de quê? De lesma?\" \"Vim na velocidade de quem chega\", disse Lucas."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "praia_chegada",
+     "cenas": [
+      83
+     ],
+     "texto": "O Vô quase engasgou com o café. Pagou o picolé dos três, que era o preço justo por uma frase tão bonita."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "sala",
+     "cenas": [
+      84
+     ],
+     "texto": "No dia seguinte, na escola, a professora nova entrou na sala. Cabelo preso, voz firme e um jeito de olhar que acalmava a turma inteira."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "lucas_carteira",
+     "cenas": [
+      85
+     ],
+     "texto": "\"Bom dia. Meu nome é Cícera.\" Lucas, que estava desenhando uma canoa no caderno, levantou a cabeça devagar. Cícera. Igual Cícero."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "sala",
+     "cenas": [
+      86
+     ],
+     "texto": "\"Cada um vai contar uma história da família\", disse ela. \"Eu começo. Eu nasci no banco de trás de uma Brasília amarela, embaixo de um pé de manga.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "sala",
+     "cenas": [
+      87
+     ],
+     "texto": "O lápis de Lucas caiu no chão. \"Professora... o taxista era meu avô.\" A turma inteira virou para ele. A professora parou no meio da frase."
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "lucas_carteira",
+     "cenas": [
+      88
+     ],
+     "texto": "Ela se abaixou, pegou o lápis e escreveu um bilhete. \"Entrega pro teu avô. Diz que é o pagamento da corrida. Com trinta anos de atraso.\""
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "varanda",
+     "cenas": [
+      89
+     ],
+     "texto": "Naquela tarde, na varanda, o Vô leu o bilhete três vezes. Dizia só: \"Aprendi a ler, seu Cícero. Corrida paga.\" Ele disse que era cisco no olho."
+    },
+    {
+     "tipo": "conversa",
+     "retrato": "vo_e_lucas",
+     "cenas": [
+      90
+     ],
+     "falas": [
+      {
+       "quem": "vo",
+       "texto": "Pressa não faz chegar mais cedo, Lucas. Cuidado é que faz chegar.",
+       "expressao": "serio",
+       "reacao": "feliz"
+      }
+     ]
+    },
+    {
+     "tipo": "narracao",
+     "imagem": "final",
+     "cenas": [
+      90
+     ],
+     "texto": "E você, já chegou mais rápido indo devagar? Conta aqui nos comentários."
+    }
+   ]
+  }
+ ],
+ "cortes": [
+  {
+   "titulo": "Ele jurou que sabia pilotar a canoa do avô",
+   "cenas": [
+    4,
+    10
+   ]
+  },
+  {
+   "titulo": "Quando o limpador quebra, o passageiro vira limpador",
+   "cenas": [
+    30,
+    35
+   ]
+  },
+  {
+   "titulo": "Cinco pessoas, duas portas e um parto a caminho",
+   "cenas": [
+    39,
+    45
+   ]
+  },
+  {
+   "titulo": "Atoleiro não sai com raiva. Sai com jeito.",
+   "cenas": [
+    49,
+    55
+   ]
+  },
+  {
+   "titulo": "Ela nasceu no banco de trás de um táxi, embaixo de um pé de manga",
+   "cenas": [
+    61,
+    67
+   ]
+  },
+  {
+   "titulo": "A professora nova nasceu no táxi do meu avô",
+   "cenas": [
+    84,
+    90
+   ]
+  }
+ ]
+}

@@ -10,6 +10,7 @@
     python -m robo --animado --lote 3   # 3 desenhos animados seguidos
     python -m robo --animado roteiros_animados/meu_causo.json
     python -m robo --amostras-voz lucas # amostras de voz no Telegram para você escolher
+    python -m robo --longo-animado      # episódio longo animado (fila roteiros_longos_animados/) + cortes
 """
 import argparse
 import sys
@@ -45,6 +46,8 @@ def main() -> int:
     p.add_argument("--status", action="store_true", help="mostra como estão as filas e episódios")
     p.add_argument("--animado", nargs="?", const="", default=None, metavar="ROTEIRO",
                    help="desenho animado com boca sincronizada (sem arquivo: fila ou Gemini)")
+    p.add_argument("--longo-animado", nargs="?", const="", default=None, metavar="ROTEIRO_OU_PASTA",
+                   help="episódio longo animado 16:9 + cortes (sem nada: continua o parado ou pega da fila)")
     p.add_argument("--amostras-voz", metavar="PERSONAGEM", default=None,
                    help="manda no Telegram uma amostra de cada voz candidata (config/serie.yaml)")
     p.add_argument("--vigiar", type=float, default=0, metavar="HORAS",
@@ -56,6 +59,17 @@ def main() -> int:
     if args.status:
         from .status import mostrar
         mostrar(cfg)
+        return 0
+
+    if args.longo_animado is not None:
+        from pathlib import Path
+        from .animacao.longo_animado import produzir_longo_animado
+        try:
+            pasta = produzir_longo_animado(cfg, Path(args.longo_animado) if args.longo_animado else None)
+        except AguardandoImagens:
+            print("Episódio esperando imagens. Coloque-as na pasta indicada e rode de novo: rodar.bat --longo-animado")
+            return 0
+        print(f"\nPronto. Pasta do episódio: {pasta}")
         return 0
 
     if args.amostras_voz:

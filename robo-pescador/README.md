@@ -207,6 +207,25 @@ Como funciona:
 do `vo_e_lucas` (centro e largura da boca, área a apagar, olhos e rosto de cada personagem).
 O instalar.bat baixa o Rhubarb e as vozes offline (`python ferramentas\baixar.py`, com hash conferido).
 
+### Episódio longo animado (`rodar.bat --longo-animado`)
+
+Episódio de 10 a 20 min para o YouTube (16:9) + cortes verticais, misturando:
+- **conversa**: o Vô e o Lucas falando com a boca sincronizada (arte publicada);
+- **narração**: o narrador do canal contando sobre uma imagem com movimento lento. Cenas seguidas
+  no mesmo lugar usam a mesma imagem (ex.: "A corrida mais longa do Vô": 90 cenas → 38 imagens).
+
+```powershell
+.\rodar.bat --longo-animado        # continua o episódio parado ou pega o próximo da fila
+.\rodar.bat --longo-animado roteiros_longos_animados\a_corrida_mais_longa_do_vo.json
+```
+
+1. **Imagens**: com `IMAGENS_ORIGEM=pollinations` o robô gera sozinho. Com `colab`, ele para e deixa
+   `IMAGENS_PEDIDAS.txt` na pasta do episódio (os prompts, para gerar no Gemini ou no Colab) e o pedido
+   no Drive. Salve as imagens com o nome indicado em `saida\LONGO-...\imagens\` e rode de novo.
+2. Monta bloco a bloco (`blocos\`): se parar, roda de novo e ele continua de onde estava.
+3. Entrega `video_longo.mp4`, `thumbnail.jpg`, os cortes em `cortes\` (vertical, com título e convite),
+   `PACOTE.txt` com capítulos e os textos de cada rede, cópia no Drive (`prontos\`) e aviso no Telegram.
+
 ---
 
 ## 7. Para quem for mexer no código
