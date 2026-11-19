@@ -112,3 +112,24 @@ def avisar_longo(cfg: Config, roteiro: dict, pasta: Path, capa: Path, cortes: li
     except requests.RequestException as e:
         print(f"AVISO: Telegram falhou ({type(e).__name__}); os arquivos estão em {onde}")
         return False
+
+
+def avisar_audios(cfg: Config, texto: str, audios: list[tuple[str, Path]]) -> bool:
+    """Manda uma mensagem e uma lista de áudios (legenda, arquivo .mp3), ex.: amostras de voz."""
+    print(texto)
+    for legenda, arq in audios:
+        print(f"   {legenda}: {arq}")
+    if not cfg.telegram_token or cfg.modo_teste:
+        return False
+    cfg.telegram_chat = descobrir_chat(cfg)
+    if not cfg.telegram_chat:
+        return False
+    chat = {"chat_id": cfg.telegram_chat}
+    try:
+        _chamar(cfg, "sendMessage", {**chat, "text": texto[:4000]})
+        for legenda, arq in audios:
+            _chamar(cfg, "sendAudio", {**chat, "caption": legenda[:1000], "title": legenda[:60]}, ("audio", arq))
+        return True
+    except requests.RequestException as e:
+        print(f"AVISO: Telegram falhou ({type(e).__name__}); os áudios estão nas pastas acima")
+        return False

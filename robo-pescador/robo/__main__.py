@@ -9,6 +9,7 @@
     python -m robo --animado            # desenho animado: roteiro da fila ou escrito pelo Gemini
     python -m robo --animado --lote 3   # 3 desenhos animados seguidos
     python -m robo --animado roteiros_animados/meu_causo.json
+    python -m robo --amostras-voz lucas # amostras de voz no Telegram para você escolher
 """
 import argparse
 import sys
@@ -44,6 +45,8 @@ def main() -> int:
     p.add_argument("--status", action="store_true", help="mostra como estão as filas e episódios")
     p.add_argument("--animado", nargs="?", const="", default=None, metavar="ROTEIRO",
                    help="desenho animado com boca sincronizada (sem arquivo: fila ou Gemini)")
+    p.add_argument("--amostras-voz", metavar="PERSONAGEM", default=None,
+                   help="manda no Telegram uma amostra de cada voz candidata (config/serie.yaml)")
     p.add_argument("--vigiar", type=float, default=0, metavar="HORAS",
                    help="fica esperando as imagens do Colab e termina cada episódio quando elas chegam")
     args = p.parse_args()
@@ -54,6 +57,24 @@ def main() -> int:
         from .status import mostrar
         mostrar(cfg)
         return 0
+
+    if args.amostras_voz:
+        from datetime import datetime
+        from .animacao import vozes
+        from .notificador import avisar_audios
+        am = cfg.serie.get("animacao", {}).get("amostras_voz", {})
+        candidatas = am.get(args.amostras_voz)
+        if not candidatas:
+            print(f"Sem candidatas para '{args.amostras_voz}' em config/serie.yaml (animacao.amostras_voz).")
+            return 1
+        pasta = cfg.pasta_saida / f"VOZES-{args.amostras_voz}-{datetime.now():%Y%m%d-%H%M%S}"
+        feitas, falhas = vozes.amostras(am["frase"], candidatas, pasta)
+        texto = (f"🎙️ Amostras de voz para {args.amostras_voz}. Escute e me diga a letra da melhor; "
+                 f"ela vai para config/serie.yaml (animacao.vozes.{args.amostras_voz}.edge).")
+        if falhas:
+            texto += "\nNão gravaram: " + "; ".join(falhas)
+        avisar_audios(cfg, texto, feitas)
+        return 0 if feitas else 1
 
     if args.animado is not None:
         from pathlib import Path

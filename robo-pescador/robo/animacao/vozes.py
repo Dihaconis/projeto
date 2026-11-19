@@ -137,3 +137,22 @@ def envelope(caminho: Path, fps: int) -> list[float]:
     env = np.clip(rms / pico, 0, 1)
     suave = np.convolve(env, np.ones(5) / 5, mode="same")
     return suave.tolist()
+
+
+def amostras(frase: str, candidatas: dict[str, dict], pasta: Path) -> tuple[list[tuple[str, Path]], list[str]]:
+    """Grava a mesma frase com cada configuração candidata (edge-tts) em MP3.
+    Devolve [(rótulo, arquivo)] das que deram certo e a lista de falhas."""
+    pasta.mkdir(parents=True, exist_ok=True)
+    feitas, falhas = [], []
+    for rotulo, cfg_voz in candidatas.items():
+        destino = pasta / f"{rotulo}.mp3"
+        legenda = f"{rotulo}: {cfg_voz['voz'].replace('pt-BR-', '').replace('Neural', '')} " \
+                  f"velocidade {cfg_voz.get('velocidade', '+0%')} tom {cfg_voz.get('tom', '+0Hz')}"
+        try:
+            _edge(frase, cfg_voz, destino)
+            if not destino.exists() or destino.stat().st_size < 1000:
+                raise ErroVoz("áudio vazio")
+            feitas.append((legenda, destino))
+        except Exception as e:  # noqa: BLE001 — voz inexistente, rede etc.
+            falhas.append(f"{rotulo} ({cfg_voz['voz']}): {type(e).__name__}")
+    return feitas, falhas

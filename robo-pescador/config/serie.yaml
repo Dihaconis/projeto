@@ -77,5 +77,20 @@ animacao:
       edge: {voz: "pt-BR-AntonioNeural", velocidade: "-8%", tom: "-6Hz"}
       piper: {modelo: "pt_BR-faber-medium", tom: 0.95, lentidao: 1.08}
     lucas:
-      edge: {voz: "pt-BR-FranciscaNeural", velocidade: "+4%", tom: "-12Hz"}
+      edge: {voz: "pt-BR-ThalitaMultilingualNeural", velocidade: "+6%", tom: "-4Hz"}
       piper: {modelo: "pt_BR-jeff-medium", tom: 1.22, lentidao: 0.95}
+  # rodar.bat --amostras-voz lucas  -> manda uma amostra de cada no Telegram para você escolher;
+  # depois copie a escolhida para vozes.lucas.edge acima
+  amostras_voz:
+    frase: "Vô, é verdade que o senhor achou uma pepita de ouro e jogou de volta no rio? Eu nunca ia fazer isso!"
+    lucas:
+      A: {voz: "pt-BR-ThalitaMultilingualNeural", velocidade: "+6%", tom: "-4Hz"}
+      B: {voz: "pt-BR-ThalitaMultilingualNeural", velocidade: "+12%", tom: "+4Hz"}
+      C: {voz: "pt-BR-ThalitaMultilingualNeural", velocidade: "+4%", tom: "-14Hz"}
+      D: {voz: "pt-BR-FranciscaNeural", velocidade: "+10%", tom: "+6Hz"}
+      E: {voz: "pt-BR-FranciscaNeural", velocidade: "+6%", tom: "-10Hz"}
+      F: {voz: "pt-BR-AntonioNeural", velocidade: "+8%", tom: "+40Hz"}
+    vo:
+      A: {voz: "pt-BR-AntonioNeural", velocidade: "-8%", tom: "-6Hz"}
+      B: {voz: "pt-BR-AntonioNeural", velocidade: "-12%", tom: "-12Hz"}
+      C: {voz: "pt-BR-AntonioNeural", velocidade: "-4%", tom: "+0Hz"}

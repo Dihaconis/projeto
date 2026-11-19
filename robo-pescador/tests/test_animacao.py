@@ -142,3 +142,25 @@ def test_desenho_animado_completo_em_modo_teste(tmp_path, monkeypatch):
     for rede in ("YOUTUBE SHORTS", "INSTAGRAM REELS", "TIKTOK", "KWAI"):
         assert rede in pacote
     assert (pasta / "thumbnail.jpg").exists()
+
+
+def test_amostras_de_voz_seguem_mesmo_se_uma_falhar(tmp_path, monkeypatch):
+    def falso_edge(texto, cfg_voz, destino):
+        if cfg_voz["voz"] == "pt-BR-NaoExisteNeural":
+            raise RuntimeError("voz inexistente")
+        destino.write_bytes(b"\xff" * 4000)
+    monkeypatch.setattr(vozes, "_edge", falso_edge)
+    feitas, falhas = vozes.amostras("Oi Vô", {
+        "A": {"voz": "pt-BR-ThalitaMultilingualNeural", "velocidade": "+6%", "tom": "-4Hz"},
+        "B": {"voz": "pt-BR-NaoExisteNeural"}}, tmp_path)
+    assert [l.split(":")[0] for l, _ in feitas] == ["A"]
+    assert "Thalita" in feitas[0][0] and feitas[0][1].exists()
+    assert len(falhas) == 1 and falhas[0].startswith("B")
+
+
+def test_candidatas_de_voz_no_serie_yaml():
+    from robo.config import Config
+    am = Config.carregar(modo_teste=True).serie["animacao"]["amostras_voz"]
+    assert am["frase"] and len(am["lucas"]) >= 4 and len(am["vo"]) >= 2
+    for cand in list(am["lucas"].values()) + list(am["vo"].values()):
+        assert cand["voz"].startswith("pt-BR-") and cand["voz"].endswith("Neural")
