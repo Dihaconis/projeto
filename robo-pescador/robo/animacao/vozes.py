@@ -49,13 +49,38 @@ def _piper(texto: str, cfg_voz: dict, destino_wav: Path) -> None:
 
 
 def _para_wav(origem: Path, destino: Path, tom: float = 1.0) -> None:
-    """Converte para WAV mono 44,1 kHz; `tom` > 1 deixa a voz mais aguda sem mudar a velocidade."""
-    filtros = ["silenceremove=start_periods=1:start_threshold=-45dB"]
+    """Converte para WAV mono 44,1 kHz; `tom` > 1 deixa a voz mais aguda sem mudar a velocidade.
+    Depois corta só o silêncio do começo e do fim (o meio da fala fica intacto)."""
+    filtros = []
     if abs(tom - 1.0) > 1e-3:
-        filtros += [f"asetrate={TAXA}*{tom:.4f}", f"aresample={TAXA}", f"atempo={1 / tom:.4f}"]
-    filtros.append("areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse")
-    midia.rodar(["-i", str(origem), "-af", ",".join(filtros), "-ar", str(TAXA), "-ac", "1",
-                 "-c:a", "pcm_s16le", str(destino)])
+        filtros += [f"aresample={TAXA}", f"asetrate={TAXA}*{tom:.4f}", f"aresample={TAXA}", f"atempo={1 / tom:.4f}"]
+    args = ["-i", str(origem)]
+    if filtros:
+        args += ["-af", ",".join(filtros)]
+    midia.rodar(args + ["-ar", str(TAXA), "-ac", "1", "-c:a", "pcm_s16le", str(destino)])
+    _aparar(destino)
+
+
+def _aparar(caminho: Path, limiar_db: float = -45.0, folga: float = 0.04) -> None:
+    import numpy as np
+    amostras, taxa = ler_wav(caminho)
+    if len(amostras) == 0:
+        raise ErroVoz(f"{caminho.name}: áudio vazio")
+    janela = max(1, taxa // 100)                              # 10 ms
+    n = len(amostras) // janela
+    x = amostras[: n * janela].astype(np.float32) / 32768.0
+    rms = np.sqrt((x.reshape(n, janela) ** 2).mean(axis=1) + 1e-12)
+    voz = np.where(20 * np.log10(rms) > limiar_db)[0]
+    if len(voz) == 0:
+        return
+    ini = max(0, voz[0] * janela - int(folga * taxa))
+    fim = min(len(amostras), (voz[-1] + 1) * janela + int(folga * taxa))
+    with wave.open(str(caminho), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(taxa)
+        w.writeframes(amostras[ini:fim].tobytes())
+
 
 
 def falar(texto: str, personagem: str, vozes: dict, motor: str, destino_wav: Path) -> str:

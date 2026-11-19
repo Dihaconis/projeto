@@ -23,7 +23,7 @@ from pathlib import Path
 from ..config import RAIZ, Config
 from .. import midia, notificador
 from ..agentes import diretor_arte
-from . import desenho, labios, render, vozes
+from . import desenho, labios, render, retrato, vozes
 from .bonecos import Boneco
 
 PASTA_ROTEIROS = RAIZ / "roteiros_animados"
@@ -69,19 +69,23 @@ def revisar(video: Path, falas: list[render.Fala], total: float) -> list[str]:
 def produzir_animado(cfg: Config, arquivo: Path | None = None) -> Path:
     arquivo = arquivo or PROVA
     roteiro = json.loads(Path(arquivo).read_text(encoding="utf-8"))
-    for pid in POSICOES:
-        if not (desenho.PASTA_BONECOS / pid / "rig.json").exists():
-            raise SystemExit(
-                f"Boneco '{pid}' ainda não foi montado em {desenho.PASTA_BONECOS / pid}. "
-                "Os bonecos são montados a partir da arte já publicada da série (mesma feição); "
-                "os desenhos de teste de desenho.py não devem ir para o canal.")
-    if not (desenho.PASTA_CENARIOS / f"{roteiro.get('cenario', 'beira_rio_entardecer')}.jpg").exists():
-        desenho.cenario_beira_rio(desenho.PASTA_CENARIOS / "beira_rio_entardecer.jpg")
+    arte = None
+    if roteiro.get("retrato"):                       # arte já publicada da série, animada
+        arte = retrato.carregar(roteiro["retrato"])
+        personagens = set(arte.rostos)
+    else:
+        for pid in POSICOES:
+            if not (desenho.PASTA_BONECOS / pid / "rig.json").exists():
+                raise SystemExit(
+                    f"Boneco '{pid}' ainda não foi montado em {desenho.PASTA_BONECOS / pid}. "
+                    "Use um retrato da arte publicada (\"retrato\" no roteiro) ou monte o boneco "
+                    "a partir dela; os desenhos de teste de desenho.py não vão para o canal.")
+        personagens = set(POSICOES)
     anim = cfg.serie.get("animacao", {})
     vozes_cfg = anim.get("vozes", {})
     motor = os.environ.get("VOZ_MOTOR", anim.get("motor_voz", "edge")).strip().lower()
     respiro = float(anim.get("respiro_segundos", 0.35))
-    roteiro = validar(roteiro, set(POSICOES) & {p.name for p in desenho.PASTA_BONECOS.iterdir()})
+    roteiro = validar(roteiro, personagens)
 
     pasta = cfg.pasta_saida / f"ANIM-{datetime.now():%Y%m%d-%H%M%S}"
     (pasta / "falas").mkdir(parents=True, exist_ok=True)
@@ -102,22 +106,31 @@ def produzir_animado(cfg: Config, arquivo: Path | None = None) -> Path:
     total = render.linha_do_tempo(falas, respiro)
     render.preparar_envelopes(falas)
 
-    atores = []
-    for fase, (pid, (x, y, escala)) in enumerate(POSICOES.items()):
-        atores.append(render.Ator(pid, Boneco(desenho.PASTA_BONECOS / pid, escala), x, y, fase * 1.7))
-    cenario = desenho.PASTA_CENARIOS / f"{roteiro['cenario']}.jpg"
-    if not cenario.exists():
-        raise FileNotFoundError(f"Cenário não encontrado: {cenario}")
-    cena = render.Cena(cenario, atores, falas, total)
+    if arte:
+        cena = retrato.RetratoCena(arte, falas, total, titulo=roteiro.get("frase_capa") or roteiro["titulo"])
+    else:
+        atores = []
+        for fase, (pid, (x, y, escala)) in enumerate(POSICOES.items()):
+            atores.append(render.Ator(pid, Boneco(desenho.PASTA_BONECOS / pid, escala), x, y, fase * 1.7))
+        cenario = desenho.PASTA_CENARIOS / f"{roteiro['cenario']}.jpg"
+        if not cenario.exists():
+            raise FileNotFoundError(f"Cenário não encontrado: {cenario}")
+        cena = render.Cena(cenario, atores, falas, total)
 
     audio = render.mixar_audio(falas, total, pasta / "vozes.wav")
     video = render.renderizar(cena, audio, pasta / "video_final.mp4", cfg.musica_fundo)
 
     quadro = pasta / "quadro_capa.jpg"
     cena.legenda = False
+    if arte:
+        cena.titulo = ""
     meio = falas[len(falas) // 2]
     cena.quadro(meio.inicio + meio.duracao / 2).save(quadro, quality=92)
-    capa = diretor_arte.capa_horizontal(quadro, roteiro.get("frase_capa") or roteiro["titulo"], pasta / "thumbnail.jpg")
+    frase = roteiro.get("frase_capa") or roteiro["titulo"]
+    if arte:                                         # quadro já é vertical 1080x1920
+        capa = diretor_arte.capa(quadro, frase, pasta / "thumbnail.jpg")
+    else:
+        capa = diretor_arte.capa_horizontal(quadro, frase, pasta / "thumbnail.jpg")
 
     problemas = revisar(video, falas, total)
     gasto = time.time() - inicio

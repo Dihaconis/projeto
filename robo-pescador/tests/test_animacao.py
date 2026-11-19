@@ -1,0 +1,90 @@
+"""Testes do desenho animado com boca sincronizada (não precisam de internet)."""
+import wave
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from robo.animacao import labios, render, retrato, vozes
+
+RAIZ = Path(__file__).resolve().parent.parent
+
+
+def _wav(caminho: Path, segundos: float, silencio_ini: float = 0.0, silencio_fim: float = 0.0, taxa: int = vozes.TAXA):
+    t = np.arange(int(segundos * taxa)) / taxa
+    tom = (0.3 * np.sin(2 * np.pi * 220 * t) * 32767).astype(np.int16)
+    x = np.concatenate([np.zeros(int(silencio_ini * taxa), np.int16), tom, np.zeros(int(silencio_fim * taxa), np.int16)])
+    with wave.open(str(caminho), "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(taxa)
+        w.writeframes(x.tobytes())
+
+
+def test_aparar_corta_so_o_silencio_das_pontas(tmp_path):
+    f = tmp_path / "fala.wav"
+    _wav(f, 2.0, silencio_ini=0.8, silencio_fim=1.2)
+    vozes._aparar(f)
+    amostras, taxa = vozes.ler_wav(f)
+    assert 1.95 < len(amostras) / taxa < 2.15            # a fala inteira fica; só as pontas saem
+
+
+def test_mudar_tom_nao_muda_a_duracao(tmp_path):
+    origem = tmp_path / "piper.wav"
+    _wav(origem, 2.0, taxa=22050)                        # o piper grava em 22 kHz
+    destino = tmp_path / "lucas.wav"
+    vozes._para_wav(origem, destino, tom=1.22)
+    amostras, taxa = vozes.ler_wav(destino)
+    assert taxa == vozes.TAXA
+    assert 1.9 < len(amostras) / taxa < 2.1
+
+
+def test_boca_segue_os_trechos_do_rhubarb():
+    b = labios.Boca([{"start": 0.0, "end": 0.2, "value": "X"}, {"start": 0.2, "end": 0.5, "value": "D"},
+                     {"start": 0.5, "end": 0.9, "value": "F"}])
+    assert [b.em(t) for t in (-1, 0.1, 0.3, 0.6, 5.0)] == ["X", "X", "D", "F", "F"]
+
+
+def test_linha_do_tempo_e_camera():
+    falas = [render.Fala("lucas", "oi", duracao=1.0), render.Fala("vo", "uma fala longa", duracao=4.0),
+             render.Fala("vo", "outra", duracao=3.0), render.Fala("lucas", "e eu", duracao=3.5)]
+    total = render.linha_do_tempo(falas, respiro=0.35)
+    assert falas[0].inicio == pytest.approx(0.6)
+    assert falas[1].inicio == pytest.approx(0.6 + 1.0 + 0.35)
+    assert total == pytest.approx(falas[-1].fim + 1.2)
+    planos = render.planejar_camera(falas, total)
+    assert planos[0].inicio == 0 and planos[-1].fim == pytest.approx(total)
+    assert {p.alvo for p in planos} >= {"geral", "vo"}                 # corta para o close de quem fala
+    assert all(a.alvo != b.alvo for a, b in zip(planos, planos[1:]))  # sem corte à toa
+
+
+def test_retrato_da_arte_publicada_mexe_so_a_boca():
+    r = retrato.carregar("vo_e_lucas")
+    fechada = np.asarray(r.montar({"vo": ("X", False), "lucas": ("X", False)})).astype(int)
+    aberta = np.asarray(r.montar({"vo": ("D", False), "lucas": ("D", False)})).astype(int)
+    diff = np.abs(fechada - aberta).sum(axis=2) > 30
+    ys, xs = np.where(diff)
+    assert len(ys) > 200                                                 # a boca mudou de verdade
+    caixas = [r.rostos[p].apagar_boca for p in ("vo", "lucas")]
+    dentro = sum(((xs >= x0 - 40) & (xs <= x1 + 40) & (ys >= y0 - 40) & (ys <= y1 + 60)).sum() for x0, y0, x1, y1 in caixas)
+    assert dentro == len(ys)
+    longe = np.asarray(r.original).astype(int)[:200]                     # céu e chapéu idênticos ao original
+    assert np.abs(longe - fechada[:200]).max() == 0
+
+
+@pytest.mark.skipif(not list((RAIZ / "ferramentas" / "rhubarb").glob("*/rhubarb*")),
+                    reason="Rhubarb ainda não baixado (python ferramentas/baixar.py)")
+def test_rhubarb_e_video_vertical(tmp_path):
+    from robo import midia
+    falas = []
+    for i, quem in enumerate(("vo", "lucas")):
+        f = tmp_path / f"f{i}.wav"
+        _wav(f, 1.5)
+        cues = labios.sincronizar(f, tmp_path / f"f{i}.json")
+        falas.append(render.Fala(quem, "fala de teste aqui", wav=f, cues=cues, duracao=1.5))
+    total = render.linha_do_tempo(falas, 0.3)
+    cena = retrato.RetratoCena(retrato.carregar("vo_e_lucas"), falas, total, titulo="Teste")
+    audio = render.mixar_audio(falas, total, tmp_path / "vozes.wav")
+    video = render.renderizar(cena, audio, tmp_path / "v.mp4", progresso=lambda _: None)
+    assert abs(midia.duracao(video) - total) < 0.3
+    assert midia.tem_audio(video)
