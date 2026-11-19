@@ -1,0 +1,67 @@
+# Bíblia da série. Todos os robôs leem este arquivo.
+# Mude aqui e todo o canal muda junto.
+
+nome: "As Histórias de um Pescador"
+bio: "Causos, piadas e a vida real do Norte que o Brasil não conhece. Um menino, um avô e o rio Araguaia."
+publico: "14 anos ou mais. Não é conteúdo infantil."
+
+cenario: >
+  Beira do rio Araguaia, no sul do Pará, na época da seca: praias de areia branca,
+  ilhas de areia no meio do rio, pedras, cerrado e mata nas margens, canoa de madeira.
+  Lugares reais que podem aparecer: Ilha do Mauro e Praia da Gaivota.
+
+personagens:
+  lucas:
+    nome: "Lucas"
+    papel: "Menino ribeirinho de 11 anos, curioso, pergunta tudo."
+    visual: >
+      menino de 11 anos, moreno claro, magro, cabelo curto cortado em casa, descalço,
+      bermuda velha e camiseta larga desbotada, sem chapéu, costuma ficar com as mãos para trás
+  vo:
+    nome: "Vô"
+    papel: >
+      Avô nordestino. Já foi "gato" (chefe de turma de peões), garimpeiro e taxista.
+      Ensina filosofias de vida com causos e humor seco.
+    visual: >
+      homem idoso nordestino, pele queimada de sol, rugas fundas, bigode grisalho,
+      chapéu de couro, camisa de botão aberta no peito
+  bisavo:
+    nome: "Bisavó"
+    papel: "Aparece em lembranças e conselhos. Não existe avó na história."
+
+regras:
+  - "Humor regional do Norte, com referências que fazem o público pesquisar por conta própria."
+  - "Folclore da região. A cobra gigante da pedreira só aparece escondida (easter egg), nunca revelada."
+  - "Toda história termina com uma lição do Vô dita de forma simples, sem sermão."
+  - "Nada de violência gráfica, palavrão pesado ou estereótipo humilhante sobre nortistas e nordestinos."
+  - "Não citar marcas, músicas ou personagens de outras obras."
+
+estilo_visual: >
+  ilustração de história em quadrinhos no estilo xilogravura de cordel nordestino,
+  linhas pretas grossas, textura de madeira entalhada, hachuras, alto contraste,
+  paleta fixa roxo-açaí, verde-mata escuro, marrom-rio, amarelo-lamparina e vermelho-urucum,
+  sem degradê digital, sem aparência 3D, sem estilo anime, sem texto na imagem
+
+# --- Versão em inglês, usada só nas imagens (os geradores entendem muito melhor inglês) ---
+# Mantenha CURTO: o gerador grátis só lê o começo do texto (cerca de 60 palavras).
+imagem_en:
+  estilo: "Woodcut print illustration, Brazilian cordel folk art, thick black lines, bold flat colors"
+  cenario: "wide calm freshwater Araguaia river, white sand river banks, green forest on the margins"
+  lucas: "Lucas: skinny 11-year-old tan Brazilian boy, short black hair, barefoot, faded t-shirt"
+  vo: "Grandpa: old tan Brazilian man, grey mustache, brown leather hat"
+  # Só para o Colab: o que o modelo deve evitar
+  negativo: "photo, photorealistic, 3d render, anime, text, letters, watermark, logo, ocean, sea, ocean waves, seagull, palm trees, coconut trees, ship, extra people, deformed hands"
+
+formato:
+  duracao_alvo_segundos: 50     # Shorts, Reels, TikTok e Kwai
+  cenas: 6
+  palavras_por_cena_max: 28
+  filtro_xilogravura: false     # aplica o estilo de gravura em todas as imagens (false = imagem crua)
+  hashtags_fixas: ["#historiasdeumpescador", "#araguaia", "#causos", "#norte"]
+
+# Episódio longo do YouTube (rodar.bat --longo) e seus cortes em pé
+formato_longo:
+  duracao_alvo_minutos: 15
+  velocidade_voz: "-12%"        # mais calma que nos curtos: é história para ouvir
+  respiro_segundos: 0.45        # pausa entre uma fala e outra
+  cta_corte: "O causo completo tá no canal As Histórias de um Pescador, lá no YouTube."

@@ -1,0 +1,14 @@
+# Robô de vídeos — As Histórias de um Pescador
+# Python 3.11 ou mais novo. Tudo aqui é gratuito.
+
+google-genai>=1.0        # Roteirista e social media (Gemini, plano gratuito)
+edge-tts>=7.0            # Narração em pt-BR (vozes neurais da Microsoft, sem chave)
+requests>=2.31           # Imagens (Pollinations) e avisos (Telegram)
+pyyaml>=6.0              # Leitura da bíblia da série
+pillow>=10.0             # Thumbnail e imagens de teste
+python-dotenv>=1.0       # Lê o arquivo .env
+opencv-python-headless>=4.9   # Filtro de xilogravura nas imagens
+numpy>=1.26
+
+# Só para desenvolvimento
+pytest>=8.0
